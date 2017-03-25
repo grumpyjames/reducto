@@ -2,10 +2,7 @@ package net.digihippo.timecache;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -50,7 +47,12 @@ class TimeCache {
     }
 
     public static class Cache<T> {
+        private final long bucketSize;
         private final Map<Long, List<T>> buckets = new HashMap<>();
+
+        public Cache(long bucketSizeMillis) {
+            this.bucketSize = bucketSizeMillis;
+        }
 
         public Consumer<T> newBucket(long bucketStart) {
             List list = buckets.computeIfAbsent(bucketStart, bs -> new ArrayList());
@@ -65,9 +67,13 @@ class TimeCache {
                 BiConsumer<T, U> reduceOne,
                 BiConsumer<U, U> combiner)
         {
-            buckets
-                .values()
-                .forEach(list -> list.forEach(item -> reduceOne.accept(item, result)));
+            long currentBucketKey = (from.toInstant().toEpochMilli() / bucketSize) * bucketSize;
+            while (currentBucketKey < toExclusive.toInstant().toEpochMilli())
+            {
+                Optional.ofNullable(buckets.get(currentBucketKey))
+                        .ifPresent(items -> items.forEach(item -> reduceOne.accept(item, result)));
+                currentBucketKey += bucketSize;
+            }
         }
     }
 
@@ -80,14 +86,14 @@ class TimeCache {
                 long currentBucketEnd) {
             Cache cache = caches.computeIfAbsent(
                     cacheDefinition.cacheName,
-                    cacheName -> new Cache());
+                    cacheName -> new Cache(currentBucketEnd - currentBucketStart));
             //noinspection unchecked
             cacheDefinition
                     .eventLoader
                     .loadEvents(
                             Instant.ofEpochMilli(currentBucketStart),
                             Instant.ofEpochMilli(currentBucketEnd),
-                            cache.newBucket(currentBucketEnd));
+                            cache.newBucket(currentBucketStart));
         }
 
         public <U, T> void iterate(

@@ -1,5 +1,6 @@
 package net.digihippo.timecache;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import java.time.Instant;
@@ -10,24 +11,23 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 
-public class TimeCacheTest {
+public class ReloadAndPlaybackTest {
     private final ZonedDateTime beginningOfTime =
             ZonedDateTime.of(2016, 11, 1, 0, 0, 0, 0, ZoneId.of("UTC"));
+    private final TimeCache timeCache = new TimeCache();
+    private final List<NamedEvent> allEvents = createEvents(beginningOfTime);
 
-
-    @Test
-    public void loadAndPlayback()
+    @Before
+    public void load()
     {
-        TimeCache timeCache = new TimeCache();
-
         timeCache.addAgent(new TimeCache.TimeCacheAgent());
         timeCache.addAgent(new TimeCache.TimeCacheAgent());
 
-        List<NamedEvent> allEvents = createEvents(beginningOfTime);
         timeCache.defineCache(
                 "historicalEvents",
                 NamedEvent.class,
@@ -38,7 +38,11 @@ public class TimeCacheTest {
                 beginningOfTime,
                 beginningOfTime.plusHours(1),
                 TimeUnit.MINUTES);
+    }
 
+    @Test
+    public void playbackEverything()
+    {
         ArrayList<NamedEvent> result = new ArrayList<>();
         timeCache.iterate(
                 "historicalEvents",
@@ -50,6 +54,31 @@ public class TimeCacheTest {
                 List::addAll);
 
         assertThat(result, containsInAnyOrder(allEvents.toArray()));
+    }
+
+    @Test
+    public void requestedTimeRangeContainingOneResult()
+    {
+        ArrayList<NamedEvent> result = new ArrayList<>();
+        ZonedDateTime from = beginningOfTime.plusMinutes(42);
+        ZonedDateTime to = beginningOfTime.plusMinutes(43);
+        timeCache.iterate(
+                "historicalEvents",
+                from,
+                to,
+                NamedEvent.class,
+                result,
+                (NamedEvent namedEvent, List<NamedEvent> namedEvents) -> namedEvents.add(namedEvent),
+                List::addAll);
+
+        assertThat(
+                result,
+                containsInAnyOrder(
+                        allEvents
+                            .stream()
+                            .filter(e -> !from.toInstant().isAfter(e.time) && e.time.isBefore(to.toInstant()))
+                            .collect(Collectors.toList())
+                            .toArray()));
     }
 
     private List<NamedEvent> createEvents(final ZonedDateTime minimumTime)
