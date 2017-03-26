@@ -3,7 +3,6 @@ package net.digihippo.timecache;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 
 class TimeCache implements TimeCacheServer {
     private final List<TimeCacheAgent> agents = new ArrayList<>();
@@ -34,13 +33,9 @@ class TimeCache implements TimeCacheServer {
             String cacheName,
             ZonedDateTime from,
             ZonedDateTime toExclusive,
-            Class<T> cacheKlass,
-            MillitimeExtractor<T> timeExtractor,
-            U result,
-            BiConsumer<T, U> reduceOne,
-            BiConsumer<U, U> combiner) {
+            ReductionDefinition<T, U> reductionDefinition) {
         for (TimeCacheAgent agent : agents) {
-            agent.iterate(cacheName, from, toExclusive, timeExtractor, result, reduceOne, combiner);
+            agent.iterate(cacheName, from, toExclusive, reductionDefinition);
         }
     }
 
@@ -64,10 +59,7 @@ class TimeCache implements TimeCacheServer {
                 String cacheName,
                 ZonedDateTime from,
                 ZonedDateTime toExclusive,
-                MillitimeExtractor<T> timeExtractor,
-                U result,
-                BiConsumer<T, U> reduceOne,
-                BiConsumer<U, U> combiner);
+                ReductionDefinition<T, U> definition);
     }
 
     public static class CacheDefinition<T>
@@ -75,12 +67,18 @@ class TimeCache implements TimeCacheServer {
         public final String cacheName;
         public final Class<T> cacheClass;
         public final EventLoader<T> eventLoader;
+        public final MillitimeExtractor<T> millitimeExtractor;
 
-        public CacheDefinition(String cacheName, Class<T> cacheClass, EventLoader<T> eventLoader) {
+        public CacheDefinition(
+                String cacheName,
+                Class<T> cacheClass,
+                EventLoader<T> eventLoader,
+                MillitimeExtractor<T> millitimeExtractor) {
 
             this.cacheName = cacheName;
             this.cacheClass = cacheClass;
             this.eventLoader = eventLoader;
+            this.millitimeExtractor = millitimeExtractor;
         }
     }
 
@@ -88,7 +86,11 @@ class TimeCache implements TimeCacheServer {
         agents.add(timeCacheAgent);
     }
 
-    public <T> void defineCache(String cacheName, Class<T> cacheClass, EventLoader<T> eventLoader) {
-        caches.put(cacheName, new CacheDefinition<>(cacheName, cacheClass, eventLoader));
+    public <T> void defineCache(
+            String cacheName,
+            Class<T> cacheClass,
+            EventLoader<T> eventLoader,
+            MillitimeExtractor<T> millitimeExtractor) {
+        caches.put(cacheName, new CacheDefinition<>(cacheName, cacheClass, eventLoader, millitimeExtractor));
     }
 }

@@ -31,7 +31,8 @@ public class ReloadAndPlaybackTest {
         timeCache.defineCache(
                 "historicalEvents",
                 NamedEvent.class,
-                new HistoricalEventLoader(allEvents));
+                new HistoricalEventLoader(allEvents),
+                (NamedEvent ne) -> ne.time.toEpochMilli());
 
         timeCache.load(
                 "historicalEvents",
@@ -72,11 +73,10 @@ public class ReloadAndPlaybackTest {
                 "historicalEvents",
                 from,
                 to,
-                NamedEvent.class,
-                (NamedEvent ne) -> ne.time.toEpochMilli(),
-                result,
-                (NamedEvent namedEvent, List<NamedEvent> namedEvents) -> namedEvents.add(namedEvent),
-                List::addAll);
+                new ReductionDefinition<>(
+                    () -> result,
+                    (NamedEvent namedEvent, List<NamedEvent> namedEvents) -> namedEvents.add(namedEvent),
+                    List::addAll));
 
         assertThat(result, containsInAnyOrder(allEvents
                 .stream()
