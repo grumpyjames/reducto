@@ -38,12 +38,18 @@ class TimeCache {
             ZonedDateTime from,
             ZonedDateTime toExclusive,
             Class<T> cacheKlass,
+            LongFunction<T> timeExtractor,
             U result,
             BiConsumer<T, U> reduceOne,
             BiConsumer<U, U> combiner) {
         for (TimeCacheAgent agent : agents) {
-            agent.iterate(cacheName, from, toExclusive, result, reduceOne, combiner);
+            agent.iterate(cacheName, from, toExclusive, timeExtractor, result, reduceOne, combiner);
         }
+    }
+
+    interface LongFunction<T>
+    {
+        long apply(final T t);
     }
 
     public static class Cache<T> {
@@ -63,15 +69,27 @@ class TimeCache {
         public <U> void iterate(
                 ZonedDateTime from,
                 ZonedDateTime toExclusive,
+                LongFunction<T> timeExtractor,
                 U result,
                 BiConsumer<T, U> reduceOne,
                 BiConsumer<U, U> combiner)
         {
-            long currentBucketKey = (from.toInstant().toEpochMilli() / bucketSize) * bucketSize;
-            while (currentBucketKey < toExclusive.toInstant().toEpochMilli())
+            long fromEpochMilli = from.toInstant().toEpochMilli();
+            long toEpochMilli = toExclusive.toInstant().toEpochMilli();
+            long currentBucketKey = (fromEpochMilli / bucketSize) * bucketSize;
+            while (currentBucketKey < toEpochMilli)
             {
-                Optional.ofNullable(buckets.get(currentBucketKey))
-                        .ifPresent(items -> items.forEach(item -> reduceOne.accept(item, result)));
+                Optional
+                    .ofNullable(buckets.get(currentBucketKey))
+                    .ifPresent(
+                        items ->
+                            items
+                                .stream()
+                                .filter(e -> {
+                                    long eTime = timeExtractor.apply(e);
+                                    return fromEpochMilli <= eTime && eTime < toEpochMilli;
+                                })
+                                .forEach(item -> reduceOne.accept(item, result)));
                 currentBucketKey += bucketSize;
             }
         }
@@ -100,12 +118,13 @@ class TimeCache {
                 String cacheName,
                 ZonedDateTime from,
                 ZonedDateTime toExclusive,
+                LongFunction<T> timeExtractor,
                 U result,
                 BiConsumer<T, U> reduceOne,
                 BiConsumer<U, U> combiner) {
             @SuppressWarnings("unchecked") Cache<T> cache = (Cache<T>) caches.get(cacheName);
             cache
-                .iterate(from, toExclusive, result, reduceOne, combiner);
+                .iterate(from, toExclusive, timeExtractor, result, reduceOne, combiner);
         }
     }
 

@@ -43,42 +43,46 @@ public class ReloadAndPlaybackTest {
     @Test
     public void playbackEverything()
     {
-        ArrayList<NamedEvent> result = new ArrayList<>();
-        timeCache.iterate(
-                "historicalEvents",
+        assertPlaybackContainsCorrectEvents(
                 beginningOfTime,
-                beginningOfTime.plusHours(1),
-                NamedEvent.class,
-                result,
-                (NamedEvent namedEvent, List<NamedEvent> namedEvents) -> namedEvents.add(namedEvent),
-                List::addAll);
-
-        assertThat(result, containsInAnyOrder(allEvents.toArray()));
+                beginningOfTime.plusHours(1));
     }
 
     @Test
     public void requestedTimeRangeContainingOneResult()
     {
+        assertPlaybackContainsCorrectEvents(
+                beginningOfTime.plusMinutes(42),
+                beginningOfTime.plusMinutes(43));
+    }
+
+    @Test
+    public void requestedTimeRangeWithinSingleBucket()
+    {
+        assertPlaybackContainsCorrectEvents(
+                beginningOfTime.plusMinutes(43),
+                beginningOfTime.plusMinutes(43).plusSeconds(15));
+    }
+
+    private void assertPlaybackContainsCorrectEvents(
+            ZonedDateTime from,
+            ZonedDateTime to) {
         ArrayList<NamedEvent> result = new ArrayList<>();
-        ZonedDateTime from = beginningOfTime.plusMinutes(42);
-        ZonedDateTime to = beginningOfTime.plusMinutes(43);
         timeCache.iterate(
                 "historicalEvents",
                 from,
                 to,
                 NamedEvent.class,
+                (NamedEvent ne) -> ne.time.toEpochMilli(),
                 result,
                 (NamedEvent namedEvent, List<NamedEvent> namedEvents) -> namedEvents.add(namedEvent),
                 List::addAll);
 
-        assertThat(
-                result,
-                containsInAnyOrder(
-                        allEvents
-                            .stream()
-                            .filter(e -> !from.toInstant().isAfter(e.time) && e.time.isBefore(to.toInstant()))
-                            .collect(Collectors.toList())
-                            .toArray()));
+        assertThat(result, containsInAnyOrder(allEvents
+                .stream()
+                .filter(e -> !from.toInstant().isAfter(e.time) && e.time.isBefore(to.toInstant()))
+                .collect(Collectors.toList())
+                .toArray()));
     }
 
     private List<NamedEvent> createEvents(final ZonedDateTime minimumTime)
@@ -88,6 +92,7 @@ public class ReloadAndPlaybackTest {
                 tse(baseTime + 1000L, "foo"),
                 tse(baseTime + TimeUnit.MINUTES.toMillis(42L), "baz"),
                 tse(baseTime + TimeUnit.MINUTES.toMillis(43L) + 1433L, "banana"),
+                tse(baseTime + TimeUnit.MINUTES.toMillis(43L) + TimeUnit.SECONDS.toMillis(52), "overripe banana"),
                 tse(baseTime + TimeUnit.MINUTES.toMillis(54L), "bananaAgain"));
     }
 
