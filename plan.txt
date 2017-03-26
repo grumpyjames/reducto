@@ -15,5 +15,9 @@ Distribution brings along questions:
  - How should we distribute?
  - Should we build in any redundancy?
 
+Java features that we will avoid:
+
+ - Concrete inheritance
+ - <? extends> and <? super>
 
 
