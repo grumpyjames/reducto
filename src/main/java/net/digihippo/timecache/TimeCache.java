@@ -1,16 +1,13 @@
 package net.digihippo.timecache;
 
-import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
-class TimeCache {
+class TimeCache implements TimeCacheServer {
     private final List<TimeCacheAgent> agents = new ArrayList<>();
     private final Map<String, CacheDefinition<?>> caches = new HashMap<>();
-
 
     public void load(
             String cacheName,
@@ -38,7 +35,7 @@ class TimeCache {
             ZonedDateTime from,
             ZonedDateTime toExclusive,
             Class<T> cacheKlass,
-            LongFunction<T> timeExtractor,
+            MillitimeExtractor<T> timeExtractor,
             U result,
             BiConsumer<T, U> reduceOne,
             BiConsumer<U, U> combiner) {
@@ -47,87 +44,14 @@ class TimeCache {
         }
     }
 
-    interface LongFunction<T>
+    @Override
+    public void loadComplete(
+            String agentId,
+            CacheDefinition<?> cacheDefinition,
+            long bucketStart,
+            long bucketEnd)
     {
-        long apply(final T t);
-    }
 
-    public static class Cache<T> {
-        private final long bucketSize;
-        private final Map<Long, List<T>> buckets = new HashMap<>();
-
-        public Cache(long bucketSizeMillis) {
-            this.bucketSize = bucketSizeMillis;
-        }
-
-        public Consumer<T> newBucket(long bucketStart) {
-            List list = buckets.computeIfAbsent(bucketStart, bs -> new ArrayList());
-            //noinspection unchecked
-            return list::add;
-        }
-
-        public <U> void iterate(
-                ZonedDateTime from,
-                ZonedDateTime toExclusive,
-                LongFunction<T> timeExtractor,
-                U result,
-                BiConsumer<T, U> reduceOne,
-                BiConsumer<U, U> combiner)
-        {
-            long fromEpochMilli = from.toInstant().toEpochMilli();
-            long toEpochMilli = toExclusive.toInstant().toEpochMilli();
-            long currentBucketKey = (fromEpochMilli / bucketSize) * bucketSize;
-            while (currentBucketKey < toEpochMilli)
-            {
-                Optional
-                    .ofNullable(buckets.get(currentBucketKey))
-                    .ifPresent(
-                        items ->
-                            items
-                                .stream()
-                                .filter(e -> {
-                                    long eTime = timeExtractor.apply(e);
-                                    return fromEpochMilli <= eTime && eTime < toEpochMilli;
-                                })
-                                .forEach(item -> reduceOne.accept(item, result)));
-                currentBucketKey += bucketSize;
-            }
-        }
-    }
-
-    public static class InMemoryTimeCacheAgent implements TimeCacheAgent {
-        public final Map<String, Cache<?>> caches = new HashMap<>();
-
-        @Override
-        public void populateBucket(
-                CacheDefinition<?> cacheDefinition,
-                long currentBucketStart,
-                long currentBucketEnd) {
-            Cache cache = caches.computeIfAbsent(
-                    cacheDefinition.cacheName,
-                    cacheName -> new Cache(currentBucketEnd - currentBucketStart));
-            //noinspection unchecked
-            cacheDefinition
-                    .eventLoader
-                    .loadEvents(
-                            Instant.ofEpochMilli(currentBucketStart),
-                            Instant.ofEpochMilli(currentBucketEnd),
-                            cache.newBucket(currentBucketStart));
-        }
-
-        @Override
-        public <U, T> void iterate(
-                String cacheName,
-                ZonedDateTime from,
-                ZonedDateTime toExclusive,
-                LongFunction<T> timeExtractor,
-                U result,
-                BiConsumer<T, U> reduceOne,
-                BiConsumer<U, U> combiner) {
-            @SuppressWarnings("unchecked") Cache<T> cache = (Cache<T>) caches.get(cacheName);
-            cache
-                .iterate(from, toExclusive, timeExtractor, result, reduceOne, combiner);
-        }
     }
 
     interface TimeCacheAgent {
@@ -140,17 +64,17 @@ class TimeCache {
                 String cacheName,
                 ZonedDateTime from,
                 ZonedDateTime toExclusive,
-                TimeCache.LongFunction<T> timeExtractor,
+                MillitimeExtractor<T> timeExtractor,
                 U result,
                 BiConsumer<T, U> reduceOne,
                 BiConsumer<U, U> combiner);
     }
 
-    private static class CacheDefinition<T>
+    public static class CacheDefinition<T>
     {
-        private final String cacheName;
-        private final Class<T> cacheClass;
-        private final EventLoader<T> eventLoader;
+        public final String cacheName;
+        public final Class<T> cacheClass;
+        public final EventLoader<T> eventLoader;
 
         public CacheDefinition(String cacheName, Class<T> cacheClass, EventLoader<T> eventLoader) {
 

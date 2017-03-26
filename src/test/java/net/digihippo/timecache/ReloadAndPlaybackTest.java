@@ -25,8 +25,8 @@ public class ReloadAndPlaybackTest {
     @Before
     public void load()
     {
-        timeCache.addAgent(new TimeCache.InMemoryTimeCacheAgent());
-        timeCache.addAgent(new TimeCache.InMemoryTimeCacheAgent());
+        timeCache.addAgent(new InMemoryTimeCacheAgent("agentOne", timeCache));
+        timeCache.addAgent(new InMemoryTimeCacheAgent("agentTwo", timeCache));
 
         timeCache.defineCache(
                 "historicalEvents",
