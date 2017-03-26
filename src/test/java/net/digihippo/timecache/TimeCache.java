@@ -95,9 +95,10 @@ class TimeCache {
         }
     }
 
-    public static class TimeCacheAgent {
+    public static class InMemoryTimeCacheAgent implements TimeCacheAgent {
         public final Map<String, Cache<?>> caches = new HashMap<>();
 
+        @Override
         public void populateBucket(
                 CacheDefinition<?> cacheDefinition,
                 long currentBucketStart,
@@ -114,6 +115,7 @@ class TimeCache {
                             cache.newBucket(currentBucketStart));
         }
 
+        @Override
         public <U, T> void iterate(
                 String cacheName,
                 ZonedDateTime from,
@@ -126,6 +128,22 @@ class TimeCache {
             cache
                 .iterate(from, toExclusive, timeExtractor, result, reduceOne, combiner);
         }
+    }
+
+    interface TimeCacheAgent {
+        void populateBucket(
+                TimeCache.CacheDefinition<?> cacheDefinition,
+                long currentBucketStart,
+                long currentBucketEnd);
+
+        <U, T> void iterate(
+                String cacheName,
+                ZonedDateTime from,
+                ZonedDateTime toExclusive,
+                TimeCache.LongFunction<T> timeExtractor,
+                U result,
+                BiConsumer<T, U> reduceOne,
+                BiConsumer<U, U> combiner);
     }
 
     private static class CacheDefinition<T>
