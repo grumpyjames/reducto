@@ -1,0 +1,19 @@
+We have some time series data, and we want to run some accumulative calculations on it.
+
+'Some': Almost 1TB. Growing by 100s of GBs a month.
+
+As such, want:
+ - To store arbitrary data so long as it is indexed primarily by time
+ - To be able to use memory spaces across multiple physical hosts
+ - As much iteration parallelism as possible (multiple threads across multiple agents)
+   - We might as well just use mysql otherwise
+ - Memory efficiency; no good parallelising if all the agents are all GCing
+   - Do we keep objects in memory, or do we just mmap a big blob, then overlay a flyweight at iteration time?
+
+Distribution brings along questions:
+
+ - How should we distribute?
+ - Should we build in any redundancy?
+
+
+
