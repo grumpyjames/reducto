@@ -1,11 +1,15 @@
 package net.digihippo.timecache;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.hamcrest.Matchers.contains;
+import static org.junit.Assert.assertThat;
 
 public class TimeCacheTest {
     private final ZonedDateTime time =
@@ -13,10 +17,9 @@ public class TimeCacheTest {
     private final TimeCache timeCache = new TimeCache();
 
     @Test
-    @Ignore
     public void rejectIterationOfAbsentCache()
     {
-        // FIXME: assert, perhaps?
+        final List<String> errors = new ArrayList<>();
         timeCache.iterate(
                 "nonexistent",
                 time,
@@ -25,7 +28,10 @@ public class TimeCacheTest {
                     Object::new,
                     (String s, Object o) -> {},
                     (o1, o2) -> {}),
-                new IterationListener<>((o) -> Assert.fail(o.toString()), Assert::fail));
+                new IterationListener<>(
+                        (o) -> Assert.fail(o.toString()), errors::add));
+
+        assertThat(errors, contains("Cache 'nonexistent' not found"));
     }
 
 }

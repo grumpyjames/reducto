@@ -94,6 +94,11 @@ class TimeCache implements TimeCacheServer {
             ReductionDefinition<T, U> reductionDefinition,
             IterationListener<U> iterationListener) {
         DistributedCacheStatus<?> distributedCacheStatus = caches.get(cacheName);
+        if (distributedCacheStatus == null)
+        {
+            iterationListener.onFatalError.accept(String.format("Cache '%s' not found", cacheName));
+            return;
+        }
 
         final long fromMillis = from.toInstant().toEpochMilli();
         final long toMillis = toExclusive.toInstant().toEpochMilli();
