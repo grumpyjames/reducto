@@ -85,7 +85,7 @@ public class ReloadAndPlaybackTest {
                 .toArray()));
     }
 
-    private List<NamedEvent> createEvents(final ZonedDateTime minimumTime)
+    private static List<NamedEvent> createEvents(final ZonedDateTime minimumTime)
     {
         long baseTime = minimumTime.toInstant().toEpochMilli();
         return Arrays.asList(
