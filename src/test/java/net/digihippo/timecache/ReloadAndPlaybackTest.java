@@ -1,5 +1,6 @@
 package net.digihippo.timecache;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.junit.Assert.fail;
 
 public class ReloadAndPlaybackTest {
     private final ZonedDateTime beginningOfTime =
@@ -32,13 +34,13 @@ public class ReloadAndPlaybackTest {
                 "historicalEvents",
                 NamedEvent.class,
                 new HistoricalEventLoader(allEvents),
-                (NamedEvent ne) -> ne.time.toEpochMilli());
+                (NamedEvent ne) -> ne.time.toEpochMilli(),
+                TimeUnit.MINUTES);
 
         timeCache.load(
                 "historicalEvents",
                 beginningOfTime,
-                beginningOfTime.plusHours(1),
-                TimeUnit.MINUTES);
+                beginningOfTime.plusHours(1));
     }
 
     @Test
@@ -74,9 +76,13 @@ public class ReloadAndPlaybackTest {
                 from,
                 to,
                 new ReductionDefinition<>(
-                    () -> result,
+                    ArrayList::new,
                     (NamedEvent namedEvent, List<NamedEvent> namedEvents) -> namedEvents.add(namedEvent),
-                    List::addAll));
+                    List::addAll),
+                new IterationListener<>(
+                    result::addAll,
+                    Assert::fail
+                ));
 
         assertThat(result, containsInAnyOrder(allEvents
                 .stream()

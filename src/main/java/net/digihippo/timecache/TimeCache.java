@@ -6,24 +6,82 @@ import java.util.concurrent.TimeUnit;
 
 class TimeCache implements TimeCacheServer {
     private final List<TimeCacheAgent> agents = new ArrayList<>();
-    private final Map<String, CacheDefinition<?>> caches = new HashMap<>();
+
+    private final Map<String, DistributedCacheStatus<?>> caches = new HashMap<>();
+    private IterationStatus iterationStatus = null;
+
+    private static final class DistributedCacheStatus<T>
+    {
+        private final CacheDefinition<T> definition;
+        private final Set<Long> loadingKeys;
+        private final Map<Long, Set<String>> bucketOwners;
+
+        private DistributedCacheStatus(
+                CacheDefinition<T> definition,
+                Set<Long> loadingKeys,
+                Map<Long, Set<String>> bucketOwners) {
+            this.definition = definition;
+            this.loadingKeys = loadingKeys;
+            this.bucketOwners = bucketOwners;
+        }
+
+        public void loadComplete(String agentId, long bucketStart) {
+            loadingKeys.remove(bucketStart);
+            bucketOwners.computeIfAbsent(bucketStart, (b) -> new HashSet<>()).add(agentId);
+        }
+
+        public void loading(long currentBucketStart) {
+            loadingKeys.add(currentBucketStart);
+        }
+    }
+
+    private static class IterationStatus<T, U>
+    {
+        private long requiredBuckets;
+        private final U accumulator;
+        private final ReductionDefinition<T, U> reductionDefinition;
+        private final IterationListener<U> iterationListener;
+
+        private IterationStatus(
+                long requiredBuckets,
+                U accumulator,
+                ReductionDefinition<T, U> reductionDefinition,
+                IterationListener<U> iterationListener) {
+            this.requiredBuckets = requiredBuckets;
+            this.accumulator = accumulator;
+            this.reductionDefinition = reductionDefinition;
+            this.iterationListener = iterationListener;
+        }
+
+        public void bucketComplete(String agentId, long currentBucketKey, Object result) {
+            @SuppressWarnings("unchecked") final U fromRemote = (U) result;
+            reductionDefinition.reduceMany.accept(this.accumulator, fromRemote);
+            requiredBuckets--;
+
+            if (requiredBuckets == 0)
+            {
+               iterationListener.onComplete.accept(accumulator);
+            }
+        }
+    }
 
     public void load(
             String cacheName,
             ZonedDateTime fromInclusive,
-            ZonedDateTime toExclusive,
-            TimeUnit bucketSize) {
-        long fromMillis = fromInclusive.toInstant().toEpochMilli();
-        long toMillis = toExclusive.toInstant().toEpochMilli();
+            ZonedDateTime toExclusive) {
+        final long fromMillis = fromInclusive.toInstant().toEpochMilli();
+        final long toMillis = toExclusive.toInstant().toEpochMilli();
+        final DistributedCacheStatus<?> distributedCacheStatus = caches.get(cacheName);
         // FIXME: imprecise intervals
-        long bucketSizeMillis = bucketSize.toMillis(1L);
-        long bucketCount = (toMillis - fromMillis) / bucketSizeMillis;
-        CacheDefinition<?> cacheDefinition = caches.get(cacheName);
+        final long bucketSizeMillis = distributedCacheStatus.definition.bucketSize.toMillis(1L);
+        final long bucketCount = (toMillis - fromMillis) / bucketSizeMillis;
 
         long currentBucketStart = fromMillis;
         long currentBucketEnd = fromMillis + bucketSizeMillis;
         for (int i = 0; i < bucketCount; i++) {
-            agents.get(i % agents.size()).populateBucket(cacheDefinition, currentBucketStart, currentBucketEnd);
+            distributedCacheStatus.loading(currentBucketStart);
+            agents.get(i % agents.size())
+                    .populateBucket(distributedCacheStatus.definition, currentBucketStart, currentBucketEnd);
             currentBucketStart = currentBucketEnd;
             currentBucketEnd += bucketSizeMillis;
         }
@@ -33,7 +91,25 @@ class TimeCache implements TimeCacheServer {
             String cacheName,
             ZonedDateTime from,
             ZonedDateTime toExclusive,
-            ReductionDefinition<T, U> reductionDefinition) {
+            ReductionDefinition<T, U> reductionDefinition,
+            IterationListener<U> iterationListener) {
+        DistributedCacheStatus<?> distributedCacheStatus = caches.get(cacheName);
+
+        final long fromMillis = from.toInstant().toEpochMilli();
+        final long toMillis = toExclusive.toInstant().toEpochMilli();
+        final long bucketMillis = distributedCacheStatus.definition.bucketSize.toMillis(1L);
+        // FIXME: Huge bugs lurk here.
+        final long firstBucketKey = (fromMillis / bucketMillis) * bucketMillis;
+        final long lastBucketKey = (toMillis / bucketMillis) * bucketMillis;
+        final long requiredBucketCount =
+                (lastBucketKey - firstBucketKey) / bucketMillis + (firstBucketKey == lastBucketKey ? 1:0);
+
+        iterationStatus =
+                new IterationStatus<>(
+                        requiredBucketCount,
+                        reductionDefinition.initialSupplier.get(),
+                        reductionDefinition,
+                        iterationListener);
         for (TimeCacheAgent agent : agents) {
             agent.iterate(cacheName, from, toExclusive, reductionDefinition);
         }
@@ -46,7 +122,16 @@ class TimeCache implements TimeCacheServer {
             long bucketStart,
             long bucketEnd)
     {
+        caches.get(cacheDefinition.cacheName)
+                .loadComplete(agentId, bucketStart);
+    }
 
+    @Override
+    public void bucketComplete(
+            String agentId,
+            long currentBucketKey,
+            Object result) {
+        iterationStatus.bucketComplete(agentId, currentBucketKey, result);
     }
 
     interface TimeCacheAgent {
@@ -68,17 +153,20 @@ class TimeCache implements TimeCacheServer {
         public final Class<T> cacheClass;
         public final EventLoader<T> eventLoader;
         public final MillitimeExtractor<T> millitimeExtractor;
+        public final TimeUnit bucketSize;
 
         public CacheDefinition(
                 String cacheName,
                 Class<T> cacheClass,
                 EventLoader<T> eventLoader,
-                MillitimeExtractor<T> millitimeExtractor) {
+                MillitimeExtractor<T> millitimeExtractor,
+                TimeUnit bucketSize) {
 
             this.cacheName = cacheName;
             this.cacheClass = cacheClass;
             this.eventLoader = eventLoader;
             this.millitimeExtractor = millitimeExtractor;
+            this.bucketSize = bucketSize;
         }
     }
 
@@ -90,7 +178,13 @@ class TimeCache implements TimeCacheServer {
             String cacheName,
             Class<T> cacheClass,
             EventLoader<T> eventLoader,
-            MillitimeExtractor<T> millitimeExtractor) {
-        caches.put(cacheName, new CacheDefinition<>(cacheName, cacheClass, eventLoader, millitimeExtractor));
+            MillitimeExtractor<T> millitimeExtractor,
+            TimeUnit bucketSize) {
+        caches.put(
+                cacheName,
+                new DistributedCacheStatus<>(
+                        new CacheDefinition<>(cacheName, cacheClass, eventLoader, millitimeExtractor, bucketSize),
+                        new HashSet<>(),
+                        new HashMap<>()));
     }
 }

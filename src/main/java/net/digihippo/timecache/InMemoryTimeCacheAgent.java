@@ -46,8 +46,7 @@ public class InMemoryTimeCacheAgent implements TimeCache.TimeCacheAgent {
             ZonedDateTime toExclusive,
             ReductionDefinition<T, U> definition) {
         @SuppressWarnings("unchecked") Cache<T> cache = (Cache<T>) caches.get(cacheName);
-        cache
-            .iterate(from, toExclusive, definition);
+        cache.iterate(agentId, from, toExclusive, definition, timeCacheServer);
     }
 
     public static class Cache<T> {
@@ -67,19 +66,23 @@ public class InMemoryTimeCacheAgent implements TimeCache.TimeCacheAgent {
         }
 
         public <U> void iterate(
+                String agentId,
                 ZonedDateTime from,
                 ZonedDateTime toExclusive,
-                ReductionDefinition<T, U> definition)
+                ReductionDefinition<T, U> definition,
+                TimeCacheServer server)
         {
             long fromEpochMilli = from.toInstant().toEpochMilli();
             long toEpochMilli = toExclusive.toInstant().toEpochMilli();
-            long currentBucketKey = (fromEpochMilli / bucketSize) * bucketSize;
-            while (currentBucketKey < toEpochMilli)
+            long bucketKey = (fromEpochMilli / bucketSize) * bucketSize;
+            while (bucketKey < toEpochMilli)
             {
+                final long currentBucketKey = bucketKey;
                 Optional
-                        .ofNullable(buckets.get(currentBucketKey))
+                        .ofNullable(buckets.get(bucketKey))
                         .ifPresent(
-                            items ->
+                            items -> {
+                                U result = definition.initialSupplier.get();
                                 items
                                     .stream()
                                     .filter(e -> {
@@ -87,9 +90,10 @@ public class InMemoryTimeCacheAgent implements TimeCache.TimeCacheAgent {
                                         return fromEpochMilli <= eTime && eTime < toEpochMilli;
                                     })
                                     .forEach(
-                                        item ->
-                                            definition.reduceOne.accept(item, definition.initialSupplier.get())));
-                currentBucketKey += bucketSize;
+                                            item -> definition.reduceOne.accept(item, result));
+                                server.bucketComplete(agentId, currentBucketKey, result);
+                            });
+                bucketKey += bucketSize;
             }
         }
     }

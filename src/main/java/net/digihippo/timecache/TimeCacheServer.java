@@ -6,4 +6,9 @@ public interface TimeCacheServer {
             TimeCache.CacheDefinition<?> cacheDefinition,
             long bucketStart,
             long bucketEnd);
+
+    void bucketComplete(
+            String agentId,
+            long currentBucketKey,
+            Object result);
 }
