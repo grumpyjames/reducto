@@ -81,7 +81,8 @@ public class ReloadAndPlaybackTest {
         timeCache.load(
                 "historicalEvents",
                 from,
-                to);
+                to,
+                new LoadListener(() -> {}, (e) -> {}));
     }
 
     private void assertPlaybackContainsCorrectEvents(

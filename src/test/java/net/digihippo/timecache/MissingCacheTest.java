@@ -1,6 +1,5 @@
 package net.digihippo.timecache;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 import java.time.ZoneId;
@@ -10,8 +9,9 @@ import java.util.List;
 
 import static org.hamcrest.Matchers.contains;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 
-public class TimeCacheTest {
+public class MissingCacheTest {
     private final ZonedDateTime time =
             ZonedDateTime.of(2016, 11, 1, 0, 0, 0, 0, ZoneId.of("UTC"));
     private final TimeCache timeCache = new TimeCache();
@@ -29,7 +29,21 @@ public class TimeCacheTest {
                     (String s, Object o) -> {},
                     (o1, o2) -> {}),
                 new IterationListener<>(
-                        (o) -> Assert.fail(o.toString()), errors::add));
+                        (o) -> fail(o.toString()), errors::add));
+
+        assertThat(errors, contains("Cache 'nonexistent' not found"));
+    }
+
+
+    @Test
+    public void rejectLoadOfAbsentCache()
+    {
+        final List<String> errors = new ArrayList<>();
+        timeCache.load(
+                "nonexistent",
+                time,
+                time.plusDays(1),
+                new LoadListener(() -> fail("cache load should not complete"), errors::add));
 
         assertThat(errors, contains("Cache 'nonexistent' not found"));
     }

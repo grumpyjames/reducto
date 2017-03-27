@@ -20,6 +20,7 @@ class TimeCache implements TimeCacheServer {
         private final CacheDefinition<T> definition;
         private final Set<Long> loadingKeys;
         private final Map<Long, Set<String>> bucketOwners;
+        private LoadListener loadListener;
 
         private DistributedCacheStatus(
                 CacheDefinition<T> definition,
@@ -33,10 +34,15 @@ class TimeCache implements TimeCacheServer {
         public void loadComplete(String agentId, long bucketStart) {
             loadingKeys.remove(bucketStart);
             bucketOwners.computeIfAbsent(bucketStart, (b) -> new HashSet<>()).add(agentId);
+            if (loadingKeys.isEmpty())
+            {
+                loadListener.onComplete.run();
+            }
         }
 
-        public void loading(long currentBucketStart) {
+        public void loading(long currentBucketStart, LoadListener loadListener) {
             loadingKeys.add(currentBucketStart);
+            this.loadListener = loadListener;
         }
     }
 
@@ -73,10 +79,17 @@ class TimeCache implements TimeCacheServer {
     public void load(
             String cacheName,
             ZonedDateTime fromInclusive,
-            ZonedDateTime toExclusive) {
+            ZonedDateTime toExclusive,
+            LoadListener loadListener) {
+        final DistributedCacheStatus<?> distributedCacheStatus = caches.get(cacheName);
+        if (distributedCacheStatus == null)
+        {
+            loadListener.onFatalError.accept(String.format("Cache '%s' not found", cacheName));
+            return;
+        }
+
         final long fromMillis = fromInclusive.toInstant().toEpochMilli();
         final long toMillis = toExclusive.toInstant().toEpochMilli();
-        final DistributedCacheStatus<?> distributedCacheStatus = caches.get(cacheName);
         final long bucketSizeMillis = distributedCacheStatus.definition.bucketSize.toMillis(1L);
 
         final long firstBucketKey = (fromMillis / bucketSizeMillis) * bucketSizeMillis;
@@ -87,9 +100,10 @@ class TimeCache implements TimeCacheServer {
         long currentBucketStart = firstBucketKey;
         long currentBucketEnd = currentBucketStart + bucketSizeMillis;
         for (int i = 0; i < bucketCount; i++) {
-            distributedCacheStatus.loading(currentBucketStart);
-            agents.get(i % agents.size())
-                    .populateBucket(distributedCacheStatus.definition, currentBucketStart, currentBucketEnd);
+            distributedCacheStatus.loading(currentBucketStart, loadListener);
+            agents
+                .get(i % agents.size())
+                .populateBucket(distributedCacheStatus.definition, currentBucketStart, currentBucketEnd);
             currentBucketStart = currentBucketEnd;
             currentBucketEnd += bucketSizeMillis;
         }
@@ -134,8 +148,9 @@ class TimeCache implements TimeCacheServer {
             long bucketStart,
             long bucketEnd)
     {
-        caches.get(cacheDefinition.cacheName)
-                .loadComplete(agentId, bucketStart);
+        caches
+            .get(cacheDefinition.cacheName)
+            .loadComplete(agentId, bucketStart);
     }
 
     @Override
