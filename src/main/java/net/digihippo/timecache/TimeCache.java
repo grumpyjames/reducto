@@ -111,8 +111,6 @@ class TimeCache implements TimeCacheServer {
         final long fromMillis = from.toInstant().toEpochMilli();
         final long toMillis = toExclusive.toInstant().toEpochMilli();
         final long bucketMillis = distributedCacheStatus.definition.bucketSize.toMillis(1L);
-
-        // FIXME: Huge bugs lurk here.
         final long firstBucketKey = (fromMillis / bucketMillis) * bucketMillis;
         final long lastBucketKey = (toMillis / bucketMillis) * bucketMillis;
         final long requiredBucketCount =
