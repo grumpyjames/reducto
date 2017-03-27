@@ -1,7 +1,12 @@
 package net.digihippo.timecache;
 
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 class TimeCache implements TimeCacheServer {
@@ -72,7 +77,6 @@ class TimeCache implements TimeCacheServer {
         final long fromMillis = fromInclusive.toInstant().toEpochMilli();
         final long toMillis = toExclusive.toInstant().toEpochMilli();
         final DistributedCacheStatus<?> distributedCacheStatus = caches.get(cacheName);
-        // FIXME: imprecise intervals
         final long bucketSizeMillis = distributedCacheStatus.definition.bucketSize.toMillis(1L);
 
         final long firstBucketKey = (fromMillis / bucketSizeMillis) * bucketSizeMillis;
@@ -107,6 +111,7 @@ class TimeCache implements TimeCacheServer {
         final long fromMillis = from.toInstant().toEpochMilli();
         final long toMillis = toExclusive.toInstant().toEpochMilli();
         final long bucketMillis = distributedCacheStatus.definition.bucketSize.toMillis(1L);
+
         // FIXME: Huge bugs lurk here.
         final long firstBucketKey = (fromMillis / bucketMillis) * bucketMillis;
         final long lastBucketKey = (toMillis / bucketMillis) * bucketMillis;
