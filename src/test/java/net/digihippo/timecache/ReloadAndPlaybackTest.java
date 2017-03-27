@@ -35,16 +35,13 @@ public class ReloadAndPlaybackTest {
                 new HistoricalEventLoader(allEvents),
                 (NamedEvent ne) -> ne.time.toEpochMilli(),
                 TimeUnit.MINUTES);
-
-        timeCache.load(
-                "historicalEvents",
-                beginningOfTime,
-                beginningOfTime.plusHours(1));
     }
 
     @Test
     public void playbackEverything()
     {
+        load(beginningOfTime, beginningOfTime.plusHours(1));
+
         assertPlaybackContainsCorrectEvents(
                 beginningOfTime,
                 beginningOfTime.plusHours(1));
@@ -53,6 +50,8 @@ public class ReloadAndPlaybackTest {
     @Test
     public void requestedTimeRangeContainingOneResult()
     {
+        load(beginningOfTime, beginningOfTime.plusHours(1));
+
         assertPlaybackContainsCorrectEvents(
                 beginningOfTime.plusMinutes(42),
                 beginningOfTime.plusMinutes(43));
@@ -61,9 +60,28 @@ public class ReloadAndPlaybackTest {
     @Test
     public void requestedTimeRangeWithinSingleBucket()
     {
+        load(beginningOfTime, beginningOfTime.plusHours(1));
+
         assertPlaybackContainsCorrectEvents(
                 beginningOfTime.plusMinutes(43),
                 beginningOfTime.plusMinutes(43).plusSeconds(15));
+    }
+
+    @Test
+    public void loadBoundariesThatAreNotBucketBoundaries()
+    {
+        load(beginningOfTime.plusSeconds(1), beginningOfTime.plusSeconds(10));
+
+        assertPlaybackContainsCorrectEvents(
+                beginningOfTime,
+                beginningOfTime.plusSeconds(8));
+    }
+
+    private void load(ZonedDateTime from, ZonedDateTime to) {
+        timeCache.load(
+                "historicalEvents",
+                from,
+                to);
     }
 
     private void assertPlaybackContainsCorrectEvents(

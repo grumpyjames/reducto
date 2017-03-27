@@ -74,10 +74,14 @@ class TimeCache implements TimeCacheServer {
         final DistributedCacheStatus<?> distributedCacheStatus = caches.get(cacheName);
         // FIXME: imprecise intervals
         final long bucketSizeMillis = distributedCacheStatus.definition.bucketSize.toMillis(1L);
-        final long bucketCount = (toMillis - fromMillis) / bucketSizeMillis;
 
-        long currentBucketStart = fromMillis;
-        long currentBucketEnd = fromMillis + bucketSizeMillis;
+        final long firstBucketKey = (fromMillis / bucketSizeMillis) * bucketSizeMillis;
+        final long maybeLastBucketKey = (toMillis / bucketSizeMillis * bucketSizeMillis);
+        final long lastBucketKey = maybeLastBucketKey == toMillis ? toMillis - bucketSizeMillis : maybeLastBucketKey;
+        final long bucketCount = 1 + (lastBucketKey - firstBucketKey) / bucketSizeMillis;
+
+        long currentBucketStart = firstBucketKey;
+        long currentBucketEnd = currentBucketStart + bucketSizeMillis;
         for (int i = 0; i < bucketCount; i++) {
             distributedCacheStatus.loading(currentBucketStart);
             agents.get(i % agents.size())

@@ -46,7 +46,9 @@ public class InMemoryTimeCacheAgent implements TimeCache.TimeCacheAgent {
             ZonedDateTime toExclusive,
             ReductionDefinition<T, U> definition) {
         @SuppressWarnings("unchecked") Cache<T> cache = (Cache<T>) caches.get(cacheName);
-        cache.iterate(agentId, from, toExclusive, definition, timeCacheServer);
+        if (cache != null) {
+            cache.iterate(agentId, from, toExclusive, definition, timeCacheServer);
+        }
     }
 
     public static class Cache<T> {
