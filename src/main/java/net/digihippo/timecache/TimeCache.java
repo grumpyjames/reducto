@@ -13,14 +13,17 @@ class TimeCache implements TimeCacheServer {
     private final List<TimeCacheAgent> agents = new ArrayList<>();
 
     private final Map<String, DistributedCacheStatus<?>> caches = new HashMap<>();
-    private IterationStatus iterationStatus = null;
 
     private static final class DistributedCacheStatus<T>
     {
         private final CacheDefinition<T> definition;
         private final Set<Long> loadingKeys;
         private final Map<Long, Set<String>> bucketOwners;
+        private final Map<Long, IterationStatus> iterations = new HashMap<>();
+
+        private long iterationKey;
         private LoadListener loadListener;
+        private long bucketsLoading;
 
         private DistributedCacheStatus(
                 CacheDefinition<T> definition,
@@ -33,8 +36,9 @@ class TimeCache implements TimeCacheServer {
 
         public void loadComplete(String agentId, long bucketStart) {
             loadingKeys.remove(bucketStart);
+            --bucketsLoading;
             bucketOwners.computeIfAbsent(bucketStart, (b) -> new HashSet<>()).add(agentId);
-            if (loadingKeys.isEmpty())
+            if (bucketsLoading == 0)
             {
                 loadListener.onComplete.run();
             }
@@ -44,20 +48,57 @@ class TimeCache implements TimeCacheServer {
             loadingKeys.add(currentBucketStart);
             this.loadListener = loadListener;
         }
+
+        public void loadingStarted(long bucketCount) {
+            this.bucketsLoading = bucketCount;
+        }
+
+        public <U> void launchNewIteration(
+            long requiredBucketCount,
+            ReductionDefinition<T, U> reductionDefinition,
+            IterationListener<U> iterationListener,
+            ZonedDateTime from,
+            ZonedDateTime toExclusive,
+            List<TimeCacheAgent> agents) {
+
+            long newIterationKey = iterationKey;
+            iterations.put(
+                newIterationKey,
+                new IterationStatus<>(
+                    newIterationKey,
+                    requiredBucketCount,
+                    reductionDefinition.initialSupplier.get(),
+                    reductionDefinition,
+                    iterationListener
+                ));
+            for (TimeCacheAgent agent : agents) {
+                agent.iterate(definition.cacheName, newIterationKey, from, toExclusive, reductionDefinition);
+            }
+            iterationKey++;
+        }
+
+        public void bucketComplete(String agentId, long iterationKey, long currentBucketKey, Object result) {
+            iterations
+                .get(iterationKey)
+                .bucketComplete(agentId, currentBucketKey, result);
+        }
     }
 
     private static class IterationStatus<T, U>
     {
+        private final long iterationKey;
         private long requiredBuckets;
         private final U accumulator;
         private final ReductionDefinition<T, U> reductionDefinition;
         private final IterationListener<U> iterationListener;
 
         private IterationStatus(
-                long requiredBuckets,
-                U accumulator,
-                ReductionDefinition<T, U> reductionDefinition,
-                IterationListener<U> iterationListener) {
+            long iterationKey,
+            long requiredBuckets,
+            U accumulator,
+            ReductionDefinition<T, U> reductionDefinition,
+            IterationListener<U> iterationListener) {
+            this.iterationKey = iterationKey;
             this.requiredBuckets = requiredBuckets;
             this.accumulator = accumulator;
             this.reductionDefinition = reductionDefinition;
@@ -99,6 +140,7 @@ class TimeCache implements TimeCacheServer {
 
         long currentBucketStart = firstBucketKey;
         long currentBucketEnd = currentBucketStart + bucketSizeMillis;
+        distributedCacheStatus.loadingStarted(bucketCount);
         for (int i = 0; i < bucketCount; i++) {
             distributedCacheStatus.loading(currentBucketStart, loadListener);
             agents
@@ -115,7 +157,8 @@ class TimeCache implements TimeCacheServer {
             ZonedDateTime toExclusive,
             ReductionDefinition<T, U> reductionDefinition,
             IterationListener<U> iterationListener) {
-        DistributedCacheStatus<?> distributedCacheStatus = caches.get(cacheName);
+        @SuppressWarnings("unchecked") DistributedCacheStatus<T> distributedCacheStatus =
+            (DistributedCacheStatus<T>) caches.get(cacheName);
         if (distributedCacheStatus == null)
         {
             iterationListener.onFatalError.accept(String.format("Cache '%s' not found", cacheName));
@@ -130,15 +173,9 @@ class TimeCache implements TimeCacheServer {
         final long requiredBucketCount =
                 (lastBucketKey - firstBucketKey) / bucketMillis + (firstBucketKey == lastBucketKey ? 1:0);
 
-        iterationStatus =
-                new IterationStatus<>(
-                        requiredBucketCount,
-                        reductionDefinition.initialSupplier.get(),
-                        reductionDefinition,
-                        iterationListener);
-        for (TimeCacheAgent agent : agents) {
-            agent.iterate(cacheName, from, toExclusive, reductionDefinition);
-        }
+        distributedCacheStatus.launchNewIteration(
+            requiredBucketCount, reductionDefinition, iterationListener, from, toExclusive, agents);
+
     }
 
     @Override
@@ -155,10 +192,14 @@ class TimeCache implements TimeCacheServer {
 
     @Override
     public void bucketComplete(
-            String agentId,
-            long currentBucketKey,
-            Object result) {
-        iterationStatus.bucketComplete(agentId, currentBucketKey, result);
+        String agentId,
+        String cacheName,
+        long iterationKey,
+        long currentBucketKey,
+        Object result) {
+        caches
+            .get(cacheName)
+            .bucketComplete(agentId, iterationKey, currentBucketKey, result);
     }
 
     interface TimeCacheAgent {
@@ -169,6 +210,7 @@ class TimeCache implements TimeCacheServer {
 
         <U, T> void iterate(
                 String cacheName,
+                long iterationKey,
                 ZonedDateTime from,
                 ZonedDateTime toExclusive,
                 ReductionDefinition<T, U> definition);

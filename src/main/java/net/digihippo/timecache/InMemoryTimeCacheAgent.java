@@ -42,12 +42,13 @@ public class InMemoryTimeCacheAgent implements TimeCache.TimeCacheAgent {
     @Override
     public <U, T> void iterate(
             String cacheName,
+            long iterationKey,
             ZonedDateTime from,
             ZonedDateTime toExclusive,
             ReductionDefinition<T, U> definition) {
         @SuppressWarnings("unchecked") Cache<T> cache = (Cache<T>) caches.get(cacheName);
         if (cache != null) {
-            cache.iterate(agentId, from, toExclusive, definition, timeCacheServer);
+            cache.iterate(agentId, cacheName, iterationKey, from, toExclusive, definition, timeCacheServer);
         }
     }
 
@@ -69,6 +70,8 @@ public class InMemoryTimeCacheAgent implements TimeCache.TimeCacheAgent {
 
         public <U> void iterate(
                 String agentId,
+                String cacheName,
+                long iterationKey,
                 ZonedDateTime from,
                 ZonedDateTime toExclusive,
                 ReductionDefinition<T, U> definition,
@@ -93,7 +96,7 @@ public class InMemoryTimeCacheAgent implements TimeCache.TimeCacheAgent {
                                     })
                                     .forEach(
                                             item -> definition.reduceOne.accept(item, result));
-                                server.bucketComplete(agentId, currentBucketKey, result);
+                                server.bucketComplete(agentId, cacheName, iterationKey, currentBucketKey, result);
                             });
                 bucketKey += bucketSize;
             }
