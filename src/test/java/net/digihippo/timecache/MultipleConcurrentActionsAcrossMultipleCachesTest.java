@@ -15,7 +15,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-public class MultipleCacheTest {
+public class MultipleConcurrentActionsAcrossMultipleCachesTest {
     private final TimeCache timeCache = new TimeCache();
     private final ZonedDateTime beginningOfTime =
             ZonedDateTime.of(2016, 11, 1, 0, 0, 0, 0, ZoneId.of("UTC"));
