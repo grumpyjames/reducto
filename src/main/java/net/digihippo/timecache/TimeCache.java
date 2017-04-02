@@ -1,5 +1,6 @@
 package net.digihippo.timecache;
 
+import java.lang.reflect.InvocationTargetException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,6 +14,18 @@ class TimeCache implements TimeCacheServer {
     private final List<TimeCacheAgent> agents = new ArrayList<>();
 
     private final Map<String, DistributedCacheStatus<?>> caches = new HashMap<>();
+    private final Map<String, Map<String, ReductionDefinition<?, ?>>> definitions = new HashMap<>();
+
+    public void installDefinitions(String name) {
+        try {
+            Object o = Class.forName(name).getConstructor().newInstance();
+            DefinitionSource definitionSource = (DefinitionSource) o;
+            Map<String, ReductionDefinition<?, ?>> definitions = definitionSource.definitions();
+            this.definitions.put(name, definitions);
+        } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | ClassNotFoundException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     private static final class DistributedCacheStatus<T>
     {
@@ -155,7 +168,8 @@ class TimeCache implements TimeCacheServer {
             String cacheName,
             ZonedDateTime from,
             ZonedDateTime toExclusive,
-            ReductionDefinition<T, U> reductionDefinition,
+            String definingClass,
+            String iterateeName,
             IterationListener<U> iterationListener) {
         @SuppressWarnings("unchecked") DistributedCacheStatus<T> distributedCacheStatus =
             (DistributedCacheStatus<T>) caches.get(cacheName);
@@ -164,6 +178,9 @@ class TimeCache implements TimeCacheServer {
             iterationListener.onFatalError.accept(String.format("Cache '%s' not found", cacheName));
             return;
         }
+
+        @SuppressWarnings("unchecked") final ReductionDefinition<T, U> reductionDefinition =
+            (ReductionDefinition<T, U>) definitions.get(definingClass).get(iterateeName);
 
         final long fromMillis = from.toInstant().toEpochMilli();
         final long toMillis = toExclusive.toInstant().toEpochMilli();

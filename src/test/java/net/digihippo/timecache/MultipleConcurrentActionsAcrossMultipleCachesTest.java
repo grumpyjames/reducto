@@ -32,6 +32,19 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
 
     private BlockableServer agentTwoToServerLink;
 
+    public static class Definitions implements DefinitionSource
+    {
+        @Override
+        public Map<String, ReductionDefinition<?, ?>> definitions() {
+            HashMap<String, ReductionDefinition<?, ?>> result = new HashMap<>();
+            result.put("default",
+                new ReductionDefinition<NamedEvent, List<NamedEvent>>(
+                    ArrayList::new, List::add, List::addAll)
+            );
+            return result;
+        }
+    }
+
     @Before
     public void setup()
     {
@@ -95,22 +108,24 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
 
         agentTwoToServerLink.block();
 
+        timeCache.installDefinitions(Definitions.class.getName());
+
         final List<NamedEvent> minuteResults = new ArrayList<>();
-        timeCache.iterate(
+        timeCache.<NamedEvent, List<NamedEvent>>iterate(
             "byMinute",
             start,
             end,
-            new ReductionDefinition<NamedEvent, List<NamedEvent>>(
-                ArrayList::new, List::add, List::addAll),
+            Definitions.class.getName(),
+            "default",
             new IterationListener<>(minuteResults::addAll, Assert::fail));
 
         final List<NamedEvent> hourResults = new ArrayList<>();
-        timeCache.iterate(
+        timeCache.<NamedEvent, List<NamedEvent>>iterate(
             "byHour",
             start,
             end,
-            new ReductionDefinition<NamedEvent, List<NamedEvent>>(
-                ArrayList::new, List::add, List::addAll),
+            Definitions.class.getName(),
+            "default",
             new IterationListener<>(hourResults::addAll, Assert::fail));
 
         // The one bucketness of the hour cache should allow it to complete...

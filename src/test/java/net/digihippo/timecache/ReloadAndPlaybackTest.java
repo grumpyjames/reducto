@@ -6,9 +6,7 @@ import org.junit.Test;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -34,6 +32,8 @@ public class ReloadAndPlaybackTest {
                 new HistoricalEventLoader(allEvents),
                 (NamedEvent ne) -> ne.time.toEpochMilli(),
                 TimeUnit.MINUTES);
+
+        timeCache.installDefinitions(Definitions.class.getName());
     }
 
     @Test
@@ -76,6 +76,24 @@ public class ReloadAndPlaybackTest {
                 beginningOfTime.plusSeconds(8));
     }
 
+    public static class Definitions implements DefinitionSource
+    {
+
+        @Override
+        public Map<String, ReductionDefinition<?, ?>> definitions() {
+            HashMap<String, ReductionDefinition<?, ?>> result = new HashMap<>();
+
+            result.put(
+                "default",
+                new ReductionDefinition<NamedEvent, List<NamedEvent>>(
+                    ArrayList::new,
+                    List::add,
+                    List::addAll));
+
+            return result;
+        }
+    }
+
     private void load(ZonedDateTime from, ZonedDateTime to) {
         timeCache.load(
                 "historicalEvents",
@@ -88,14 +106,12 @@ public class ReloadAndPlaybackTest {
             ZonedDateTime from,
             ZonedDateTime to) {
         ArrayList<NamedEvent> result = new ArrayList<>();
-        timeCache.iterate(
+        timeCache.<NamedEvent, List<NamedEvent>>iterate(
                 "historicalEvents",
                 from,
                 to,
-                new ReductionDefinition<NamedEvent, List<NamedEvent>>(
-                    ArrayList::new,
-                    List::add,
-                    List::addAll),
+                Definitions.class.getName(),
+                "default",
                 new IterationListener<>(
                     result::addAll,
                     Assert::fail

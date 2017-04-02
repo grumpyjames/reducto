@@ -24,10 +24,8 @@ public class MissingCacheTest {
                 "nonexistent",
                 time,
                 time.plusDays(1),
-                new ReductionDefinition<>(
-                    Object::new,
-                    (Object o, String s) -> {},
-                    (o1, o2) -> {}),
+                "unused",
+                "unused",
                 new IterationListener<>(
                         (o) -> fail(o.toString()), errors::add));
 
