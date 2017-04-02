@@ -92,9 +92,9 @@ public class ReloadAndPlaybackTest {
                 "historicalEvents",
                 from,
                 to,
-                new ReductionDefinition<>(
+                new ReductionDefinition<NamedEvent, List<NamedEvent>>(
                     ArrayList::new,
-                    (NamedEvent namedEvent, List<NamedEvent> namedEvents) -> namedEvents.add(namedEvent),
+                    List::add,
                     List::addAll),
                 new IterationListener<>(
                     result::addAll,

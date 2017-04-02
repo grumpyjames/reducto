@@ -95,7 +95,7 @@ public class InMemoryTimeCacheAgent implements TimeCache.TimeCacheAgent {
                                         return fromEpochMilli <= eTime && eTime < toEpochMilli;
                                     })
                                     .forEach(
-                                            item -> definition.reduceOne.accept(item, result));
+                                            item -> definition.reduceOne.accept(result, item));
                                 server.bucketComplete(agentId, cacheName, iterationKey, currentBucketKey, result);
                             });
                 bucketKey += bucketSize;

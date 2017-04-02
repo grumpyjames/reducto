@@ -100,8 +100,8 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
             "byMinute",
             start,
             end,
-            new ReductionDefinition<>(
-                ArrayList::new, (NamedEvent a, List<NamedEvent> b) -> b.add(a), List::addAll),
+            new ReductionDefinition<NamedEvent, List<NamedEvent>>(
+                ArrayList::new, List::add, List::addAll),
             new IterationListener<>(minuteResults::addAll, Assert::fail));
 
         final List<NamedEvent> hourResults = new ArrayList<>();
@@ -109,8 +109,8 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
             "byHour",
             start,
             end,
-            new ReductionDefinition<>(
-                ArrayList::new, (NamedEvent a, List<NamedEvent> b) -> b.add(a), List::addAll),
+            new ReductionDefinition<NamedEvent, List<NamedEvent>>(
+                ArrayList::new, List::add, List::addAll),
             new IterationListener<>(hourResults::addAll, Assert::fail));
 
         // The one bucketness of the hour cache should allow it to complete...
