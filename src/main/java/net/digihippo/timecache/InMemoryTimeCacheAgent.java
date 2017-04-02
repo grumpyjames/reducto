@@ -1,5 +1,6 @@
 package net.digihippo.timecache;
 
+import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -13,6 +14,20 @@ public class InMemoryTimeCacheAgent implements TimeCache.TimeCacheAgent {
     public InMemoryTimeCacheAgent(String agentId, TimeCacheServer timeCacheServer) {
         this.agentId = agentId;
         this.timeCacheServer = timeCacheServer;
+    }
+
+    private final Map<String, Map<String, ReductionDefinition<?, ?>>> definitions = new HashMap<>();
+
+    @Override
+    public void installDefinitions(String name) {
+        try {
+            Object o = Class.forName(name).getConstructor().newInstance();
+            DefinitionSource definitionSource = (DefinitionSource) o;
+            Map<String, ReductionDefinition<?, ?>> definitions = definitionSource.definitions();
+            this.definitions.put(name, definitions);
+        } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | ClassNotFoundException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -45,7 +60,11 @@ public class InMemoryTimeCacheAgent implements TimeCache.TimeCacheAgent {
             long iterationKey,
             ZonedDateTime from,
             ZonedDateTime toExclusive,
-            ReductionDefinition<T, U> definition) {
+            String installerName,
+            String definitionName) {
+
+        @SuppressWarnings("unchecked") ReductionDefinition<T, U> definition =
+            (ReductionDefinition<T, U>) definitions.get(installerName).get(definitionName);
         @SuppressWarnings("unchecked") Cache<T> cache = (Cache<T>) caches.get(cacheName);
         if (cache != null) {
             cache.iterate(agentId, cacheName, iterationKey, from, toExclusive, definition, timeCacheServer);

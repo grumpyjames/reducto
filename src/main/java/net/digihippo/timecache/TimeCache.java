@@ -22,6 +22,7 @@ class TimeCache implements TimeCacheServer {
             DefinitionSource definitionSource = (DefinitionSource) o;
             Map<String, ReductionDefinition<?, ?>> definitions = definitionSource.definitions();
             this.definitions.put(name, definitions);
+            agents.forEach(agent -> agent.installDefinitions(name));
         } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | ClassNotFoundException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
@@ -68,6 +69,8 @@ class TimeCache implements TimeCacheServer {
 
         public <U> void launchNewIteration(
             long requiredBucketCount,
+            String installingClass,
+            String definitionName,
             ReductionDefinition<T, U> reductionDefinition,
             IterationListener<U> iterationListener,
             ZonedDateTime from,
@@ -85,7 +88,8 @@ class TimeCache implements TimeCacheServer {
                     iterationListener
                 ));
             for (TimeCacheAgent agent : agents) {
-                agent.iterate(definition.cacheName, newIterationKey, from, toExclusive, reductionDefinition);
+                agent.iterate(
+                    definition.cacheName, newIterationKey, from, toExclusive, installingClass, definitionName);
             }
             iterationKey++;
         }
@@ -95,6 +99,8 @@ class TimeCache implements TimeCacheServer {
                 .get(iterationKey)
                 .bucketComplete(agentId, currentBucketKey, result);
         }
+
+
     }
 
     private static class IterationStatus<T, U>
@@ -191,7 +197,14 @@ class TimeCache implements TimeCacheServer {
                 (lastBucketKey - firstBucketKey) / bucketMillis + (firstBucketKey == lastBucketKey ? 1:0);
 
         distributedCacheStatus.launchNewIteration(
-            requiredBucketCount, reductionDefinition, iterationListener, from, toExclusive, agents);
+            requiredBucketCount,
+            definingClass,
+            iterateeName,
+            reductionDefinition,
+            iterationListener,
+            from,
+            toExclusive,
+            agents);
 
     }
 
@@ -220,6 +233,8 @@ class TimeCache implements TimeCacheServer {
     }
 
     interface TimeCacheAgent {
+        void installDefinitions(String className);
+
         void populateBucket(
                 TimeCache.CacheDefinition<?> cacheDefinition,
                 long currentBucketStart,
@@ -230,7 +245,8 @@ class TimeCache implements TimeCacheServer {
                 long iterationKey,
                 ZonedDateTime from,
                 ZonedDateTime toExclusive,
-                ReductionDefinition<T, U> definition);
+                String installingClass,
+                String definitionName);
     }
 
     public static class CacheDefinition<T>
