@@ -1,0 +1,12 @@
+Send the definition to the cache data; _don't_ get data from the cache.
+
+Java features that we will avoid:
+
+ - Concrete inheritance
+ - <? extends> and <? super>
+
+On reduction definitions:
+
+We don't want to send serialized versions of arbitrary ReductionDefinitions.
+We're afraid of classloader magic, so minimize it, where possible.
+For example: don't load classes over http; prefer to http across a jar or well defined zip of jars.
