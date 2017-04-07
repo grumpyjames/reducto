@@ -13,4 +13,13 @@ public interface TimeCacheServer {
         long iterationKey,
         long currentBucketKey,
         Object result);
+
+    void installationComplete(
+        String agentName,
+        String installationKlass);
+
+    void installationError(
+        String agentName,
+        String installationKlass,
+        String errorMessage);
 }

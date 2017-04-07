@@ -2,27 +2,60 @@ package net.digihippo.timecache;
 
 import java.lang.reflect.InvocationTargetException;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 class TimeCache implements TimeCacheServer {
-    private final List<TimeCacheAgent> agents = new ArrayList<>();
+    private final Map<String, TimeCacheAgent> agents = new HashMap<>();
 
     private final Map<String, DistributedCacheStatus<?>> caches = new HashMap<>();
     private final Map<String, Map<String, ReductionDefinition<?, ?>>> definitions = new HashMap<>();
+    private final Map<String, InstallationProgress> installationProgress = new HashMap<>();
 
-    public void installDefinitions(String name) {
+    private static final class InstallationProgress
+    {
+        private final Set<String> remainingAgents;
+        private final InstallationListener listener;
+        private final Map<String, String> errors = new HashMap<>();
+
+        private InstallationProgress(Set<String> remainingAgents, InstallationListener listener) {
+            this.remainingAgents = remainingAgents;
+            this.listener = listener;
+        }
+
+        public void complete(String agentName) {
+            remainingAgents.remove(agentName);
+            tryCompletion();
+        }
+
+        public void error(String agentName, String errorMessage) {
+            remainingAgents.remove(agentName);
+            errors.put(agentName, errorMessage);
+            tryCompletion();
+        }
+
+        private void tryCompletion() {
+            if (remainingAgents.isEmpty())
+            {
+                if (errors.isEmpty()) {
+                    listener.onComplete.run();
+                } else {
+                    listener.onError.accept(errors);
+                }
+            }
+        }
+    }
+
+    public void installDefinitions(String name, InstallationListener installationListener) {
         try {
             Object o = Class.forName(name).getConstructor().newInstance();
             DefinitionSource definitionSource = (DefinitionSource) o;
             Map<String, ReductionDefinition<?, ?>> definitions = definitionSource.definitions();
             this.definitions.put(name, definitions);
-            agents.forEach(agent -> agent.installDefinitions(name));
+            installationProgress.put(
+                name,
+                new InstallationProgress(new HashSet<>(agents.keySet()), installationListener));
+            agents.values().forEach(agent -> agent.installDefinitions(name));
         } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | ClassNotFoundException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
@@ -75,7 +108,7 @@ class TimeCache implements TimeCacheServer {
             IterationListener<U> iterationListener,
             ZonedDateTime from,
             ZonedDateTime toExclusive,
-            List<TimeCacheAgent> agents) {
+            Collection<TimeCacheAgent> agents) {
 
             long newIterationKey = iterationKey;
             iterations.put(
@@ -162,8 +195,8 @@ class TimeCache implements TimeCacheServer {
         distributedCacheStatus.loadingStarted(bucketCount);
         for (int i = 0; i < bucketCount; i++) {
             distributedCacheStatus.loading(currentBucketStart, loadListener);
-            agents
-                .get(i % agents.size())
+            TimeCacheAgent[] values = agents.values().toArray(new TimeCacheAgent[agents.size()]);
+            values[i % agents.size()]
                 .populateBucket(distributedCacheStatus.definition, currentBucketStart, currentBucketEnd);
             currentBucketStart = currentBucketEnd;
             currentBucketEnd += bucketSizeMillis;
@@ -204,7 +237,7 @@ class TimeCache implements TimeCacheServer {
             iterationListener,
             from,
             toExclusive,
-            agents);
+            agents.values());
 
     }
 
@@ -230,6 +263,19 @@ class TimeCache implements TimeCacheServer {
         caches
             .get(cacheName)
             .bucketComplete(agentId, iterationKey, currentBucketKey, result);
+    }
+
+    @Override
+    public void installationComplete(String agentName, String installationKlass) {
+        installationProgress.get(installationKlass).complete(agentName);
+    }
+
+    @Override
+    public void installationError(
+        String agentName,
+        String installationKlass,
+        String errorMessage) {
+        installationProgress.get(installationKlass).error(agentName, errorMessage);
     }
 
     interface TimeCacheAgent {
@@ -272,8 +318,8 @@ class TimeCache implements TimeCacheServer {
         }
     }
 
-    public void addAgent(TimeCacheAgent timeCacheAgent) {
-        agents.add(timeCacheAgent);
+    public void addAgent(String agentName, TimeCacheAgent timeCacheAgent) {
+        agents.put(agentName, timeCacheAgent);
     }
 
     public <T> void defineCache(

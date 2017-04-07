@@ -49,9 +49,11 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
     public void setup()
     {
         BlockableServer agentOneToServerLink = new BlockableServer(timeCache);
-        timeCache.addAgent(new InMemoryTimeCacheAgent("agentOne", agentOneToServerLink));
+        timeCache.addAgent(
+            "agentOne", new InMemoryTimeCacheAgent("agentOne", agentOneToServerLink));
         agentTwoToServerLink = new BlockableServer(timeCache);
-        timeCache.addAgent(new InMemoryTimeCacheAgent("agentTwo", agentTwoToServerLink));
+        timeCache.addAgent(
+            "agentTwo", new InMemoryTimeCacheAgent("agentTwo", agentTwoToServerLink));
 
 
         timeCache.defineCache(
@@ -108,7 +110,9 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
 
         agentTwoToServerLink.block();
 
-        timeCache.installDefinitions(Definitions.class.getName());
+        timeCache.installDefinitions(
+            Definitions.class.getName(),
+            new InstallationListener(() -> {}, m -> Assert.fail("found installation errors: " + m.toString())));
 
         final List<NamedEvent> minuteResults = new ArrayList<>();
         timeCache.<NamedEvent, List<NamedEvent>>iterate(
@@ -238,6 +242,16 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
             } else {
                 timeCache.bucketComplete(agentId, cacheName, iterationKey, currentBucketKey, result);
             }
+        }
+
+        @Override
+        public void installationComplete(String agentName, String installationKlass) {
+            timeCache.installationComplete(agentName, installationKlass);
+        }
+
+        @Override
+        public void installationError(String agentName, String installationKlass, String errorMessage) {
+            timeCache.installationError(agentName, installationKlass, errorMessage);
         }
 
         public void block() {

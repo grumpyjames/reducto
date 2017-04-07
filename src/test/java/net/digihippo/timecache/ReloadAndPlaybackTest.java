@@ -23,8 +23,8 @@ public class ReloadAndPlaybackTest {
     @Before
     public void load()
     {
-        timeCache.addAgent(new InMemoryTimeCacheAgent("agentOne", timeCache));
-        timeCache.addAgent(new InMemoryTimeCacheAgent("agentTwo", timeCache));
+        timeCache.addAgent("agentOne", new InMemoryTimeCacheAgent("agentOne", timeCache));
+        timeCache.addAgent("agentTwo", new InMemoryTimeCacheAgent("agentTwo", timeCache));
 
         timeCache.defineCache(
                 "historicalEvents",
@@ -33,7 +33,9 @@ public class ReloadAndPlaybackTest {
                 (NamedEvent ne) -> ne.time.toEpochMilli(),
                 TimeUnit.MINUTES);
 
-        timeCache.installDefinitions(Definitions.class.getName());
+        timeCache.installDefinitions(
+            PlaybackDefinitions.class.getName(),
+            new InstallationListener(() -> {}, m -> Assert.fail("found installation errors: " + m.toString())));
     }
 
     @Test
@@ -76,24 +78,6 @@ public class ReloadAndPlaybackTest {
                 beginningOfTime.plusSeconds(8));
     }
 
-    public static class Definitions implements DefinitionSource
-    {
-
-        @Override
-        public Map<String, ReductionDefinition<?, ?>> definitions() {
-            HashMap<String, ReductionDefinition<?, ?>> result = new HashMap<>();
-
-            result.put(
-                "default",
-                new ReductionDefinition<NamedEvent, List<NamedEvent>>(
-                    ArrayList::new,
-                    List::add,
-                    List::addAll));
-
-            return result;
-        }
-    }
-
     private void load(ZonedDateTime from, ZonedDateTime to) {
         timeCache.load(
                 "historicalEvents",
@@ -110,7 +94,7 @@ public class ReloadAndPlaybackTest {
                 "historicalEvents",
                 from,
                 to,
-                Definitions.class.getName(),
+                PlaybackDefinitions.class.getName(),
                 "default",
                 new IterationListener<>(
                     result::addAll,
