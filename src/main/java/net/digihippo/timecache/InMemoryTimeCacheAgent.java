@@ -5,12 +5,14 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.function.Consumer;
 
-public class InMemoryTimeCacheAgent implements TimeCacheAgent {
+public class InMemoryTimeCacheAgent implements TimeCacheAgent
+{
     private final String agentId;
     private final TimeCacheServer timeCacheServer;
     private final Map<String, Cache<?>> caches = new HashMap<>();
 
-    public InMemoryTimeCacheAgent(String agentId, TimeCacheServer timeCacheServer) {
+    public InMemoryTimeCacheAgent(String agentId, TimeCacheServer timeCacheServer)
+    {
         this.agentId = agentId;
         this.timeCacheServer = timeCacheServer;
     }
@@ -18,7 +20,8 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent {
     private final Map<String, Map<String, ReductionDefinition<?, ?>>> definitions = new HashMap<>();
 
     @Override
-    public void installDefinitions(String name) {
+    public void installDefinitions(String name)
+    {
         Result<DefinitionSource, Exception> result = ClassLoading.loadAndCast(name, DefinitionSource.class);
         result.consume(
             definitionSource -> this.definitions.put(name, definitionSource.definitions()),
@@ -30,9 +33,10 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent {
 
     @Override
     public void populateBucket(
-            String cacheName,
-            long currentBucketStart,
-            long currentBucketEnd) {
+        String cacheName,
+        long currentBucketStart,
+        long currentBucketEnd)
+    {
         Cache cache = caches.get(cacheName);
         //noinspection unchecked
         cache
@@ -41,26 +45,28 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent {
                 currentBucketEnd);
 
         timeCacheServer
-                .loadComplete(
-                        agentId,
-                        cacheName,
-                        currentBucketStart,
-                        currentBucketEnd);
+            .loadComplete(
+                agentId,
+                cacheName,
+                currentBucketStart,
+                currentBucketEnd);
     }
 
     @Override
     public void iterate(
-            String cacheName,
-            long iterationKey,
-            ZonedDateTime from,
-            ZonedDateTime toExclusive,
-            String installerName,
-            String definitionName) {
+        String cacheName,
+        long iterationKey,
+        ZonedDateTime from,
+        ZonedDateTime toExclusive,
+        String installerName,
+        String definitionName)
+    {
 
         ReductionDefinition definition =
             definitions.get(installerName).get(definitionName);
         Cache cache = caches.get(cacheName);
-        if (cache != null) {
+        if (cache != null)
+        {
             //noinspection unchecked
             cache.iterate(
                 agentId,
@@ -99,30 +105,33 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent {
         );
     }
 
-    public static class Cache<T> {
+    public static class Cache<T>
+    {
         private final TimeCache.CacheDefinition<T> cacheDefinition;
         private final long bucketSize;
         private final Map<Long, List<T>> buckets = new HashMap<>();
 
-        public Cache(TimeCache.CacheDefinition<T> cacheDefinition, long bucketSizeMillis) {
+        public Cache(TimeCache.CacheDefinition<T> cacheDefinition, long bucketSizeMillis)
+        {
             this.cacheDefinition = cacheDefinition;
             this.bucketSize = bucketSizeMillis;
         }
 
-        public Consumer<T> newBucket(long bucketStart) {
+        public Consumer<T> newBucket(long bucketStart)
+        {
             List list = buckets.computeIfAbsent(bucketStart, bs -> new ArrayList());
             //noinspection unchecked
             return list::add;
         }
 
         public <U> void iterate(
-                String agentId,
-                String cacheName,
-                long iterationKey,
-                ZonedDateTime from,
-                ZonedDateTime toExclusive,
-                ReductionDefinition<T, U> definition,
-                TimeCacheServer server)
+            String agentId,
+            String cacheName,
+            long iterationKey,
+            ZonedDateTime from,
+            ZonedDateTime toExclusive,
+            ReductionDefinition<T, U> definition,
+            TimeCacheServer server)
         {
             long fromEpochMilli = from.toInstant().toEpochMilli();
             long toEpochMilli = toExclusive.toInstant().toEpochMilli();
@@ -131,25 +140,26 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent {
             {
                 final long currentBucketKey = bucketKey;
                 Optional
-                        .ofNullable(buckets.get(bucketKey))
-                        .ifPresent(
-                            items -> {
-                                U result = definition.initialSupplier.get();
-                                items
-                                    .stream()
-                                    .filter(e -> {
-                                        long eTime = cacheDefinition.millitimeExtractor.apply(e);
-                                        return fromEpochMilli <= eTime && eTime < toEpochMilli;
-                                    })
-                                    .forEach(
-                                            item -> definition.reduceOne.accept(result, item));
-                                server.bucketComplete(agentId, cacheName, iterationKey, currentBucketKey, result);
-                            });
+                    .ofNullable(buckets.get(bucketKey))
+                    .ifPresent(
+                        items -> {
+                            U result = definition.initialSupplier.get();
+                            items
+                                .stream()
+                                .filter(e -> {
+                                    long eTime = cacheDefinition.millitimeExtractor.apply(e);
+                                    return fromEpochMilli <= eTime && eTime < toEpochMilli;
+                                })
+                                .forEach(
+                                    item -> definition.reduceOne.accept(result, item));
+                            server.bucketComplete(agentId, cacheName, iterationKey, currentBucketKey, result);
+                        });
                 bucketKey += bucketSize;
             }
         }
 
-        public void loadEvents(long from, long toExclusive) {
+        public void loadEvents(long from, long toExclusive)
+        {
             cacheDefinition.eventLoader.loadEvents(
                 Instant.ofEpochMilli(from),
                 Instant.ofEpochMilli(toExclusive),
