@@ -16,13 +16,13 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 public class MultipleConcurrentActionsAcrossMultipleCachesTest {
-    private final TimeCache timeCache = new TimeCache();
-    private final ZonedDateTime beginningOfTime =
+    private static final ZonedDateTime BEGINNING_OF_TIME =
             ZonedDateTime.of(2016, 11, 1, 0, 0, 0, 0, ZoneId.of("UTC"));
+    private static final List<NamedEvent> ALL_EVENTS = createEvents(BEGINNING_OF_TIME);
 
-    private final List<NamedEvent> allEvents = createEvents(beginningOfTime);
+    private final TimeCache timeCache = new TimeCache();
 
-    private List<NamedEvent> createEvents(ZonedDateTime beginningOfTime) {
+    private static List<NamedEvent> createEvents(ZonedDateTime beginningOfTime) {
         return Arrays.asList(
                 NamedEvent.event(beginningOfTime.plusSeconds(1L), "one"),
                 NamedEvent.event(beginningOfTime.plusMinutes(2L).plusSeconds(45), "two"),
@@ -45,6 +45,30 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
         }
     }
 
+    public static final class MinuteCacheFactory implements CacheComponentsFactory<NamedEvent>
+    {
+        @Override
+        public CacheComponents<NamedEvent> createCacheComponents() {
+            return new CacheComponents<>(
+                NamedEvent.class,
+                new HistoricalEventLoader(ALL_EVENTS),
+                (NamedEvent ne) -> ne.time.toEpochMilli(),
+                TimeUnit.MINUTES);
+        }
+    }
+
+    public static final class HourCacheFactory implements CacheComponentsFactory<NamedEvent>
+    {
+        @Override
+        public CacheComponents<NamedEvent> createCacheComponents() {
+            return new CacheComponents<>(
+                NamedEvent.class,
+                new HistoricalEventLoader(ALL_EVENTS),
+                (NamedEvent ne) -> ne.time.toEpochMilli(),
+                TimeUnit.HOURS);
+        }
+    }
+
     @Before
     public void setup()
     {
@@ -58,19 +82,11 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
 
         timeCache.defineCache(
             "byMinute",
-            NamedEvent.class,
-            new HistoricalEventLoader(allEvents),
-            (NamedEvent ne) -> ne.time.toEpochMilli(),
-            TimeUnit.MINUTES
-        );
+            MinuteCacheFactory.class.getName());
 
         timeCache.defineCache(
             "byHour",
-            NamedEvent.class,
-            new HistoricalEventLoader(allEvents),
-            (NamedEvent ne) -> ne.time.toEpochMilli(),
-            TimeUnit.HOURS
-        );
+            HourCacheFactory.class.getName());
     }
 
     @Test
@@ -81,15 +97,15 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
         final LoadCompleteDetector minuteCacheLoadDetector = new LoadCompleteDetector();
         timeCache.load(
             "byMinute",
-            beginningOfTime,
-            beginningOfTime.plusMinutes(10),
+            BEGINNING_OF_TIME,
+            BEGINNING_OF_TIME.plusMinutes(10),
             new LoadListener(minuteCacheLoadDetector, Assert::fail));
 
         final LoadCompleteDetector hourCacheLoadDetector = new LoadCompleteDetector();
         timeCache.load(
             "byHour",
-            beginningOfTime,
-            beginningOfTime.plusMinutes(10),
+            BEGINNING_OF_TIME,
+            BEGINNING_OF_TIME.plusMinutes(10),
             new LoadListener(hourCacheLoadDetector, Assert::fail));
 
         assertTrue(hourCacheLoadDetector.loadComplete);
@@ -103,7 +119,7 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
     @Test
     public void iterateOverMultipleCaches()
     {
-        ZonedDateTime start = this.beginningOfTime;
+        ZonedDateTime start = BEGINNING_OF_TIME;
         ZonedDateTime end = start.plusMinutes(10);
         timeCache.load("byMinute", start, end, new LoadListener(() -> {}, Assert::fail));
         timeCache.load("byHour", start, end, new LoadListener(() -> {}, Assert::fail));
@@ -134,12 +150,12 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
 
         // The one bucketness of the hour cache should allow it to complete...
         assertThat(minuteResults, empty());
-        assertThat(hourResults, containsInAnyOrder(allEvents.toArray()));
+        assertThat(hourResults, containsInAnyOrder(ALL_EVENTS.toArray()));
 
         agentTwoToServerLink.unblockAndFlush();
 
-        assertThat(minuteResults, containsInAnyOrder(allEvents.toArray()));
-        assertThat(hourResults, containsInAnyOrder(allEvents.toArray()));
+        assertThat(minuteResults, containsInAnyOrder(ALL_EVENTS.toArray()));
+        assertThat(hourResults, containsInAnyOrder(ALL_EVENTS.toArray()));
     }
 
     private static class LoadCompleteDetector implements Runnable
@@ -160,24 +176,24 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
     private static class LoadCompleteEvent implements TimeCacheEvent
     {
         private final String agentId;
-        private final TimeCache.CacheDefinition cacheDefinition;
+        private final String cacheName;
         private final long bucketStart;
         private final long bucketEnd;
 
         private LoadCompleteEvent(
             String agentId,
-            TimeCache.CacheDefinition cacheDefinition,
+            String cacheName,
             long bucketStart,
             long bucketEnd) {
             this.agentId = agentId;
-            this.cacheDefinition = cacheDefinition;
+            this.cacheName = cacheName;
             this.bucketStart = bucketStart;
             this.bucketEnd = bucketEnd;
         }
 
         @Override
         public void deliverTo(TimeCacheServer timeCache) {
-            timeCache.loadComplete(agentId, cacheDefinition, bucketStart, bucketEnd);
+            timeCache.loadComplete(agentId, cacheName, bucketStart, bucketEnd);
         }
     }
 
@@ -220,13 +236,13 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
         @Override
         public void loadComplete(
                 String agentId,
-                TimeCache.CacheDefinition<?> cacheDefinition,
+                String cacheName,
                 long bucketStart,
                 long bucketEnd) {
             if (blocking) {
-                events.add(new LoadCompleteEvent(agentId, cacheDefinition, bucketStart, bucketEnd));
+                events.add(new LoadCompleteEvent(agentId, cacheName, bucketStart, bucketEnd));
             } else {
-                timeCache.loadComplete(agentId, cacheDefinition, bucketStart, bucketEnd);
+                timeCache.loadComplete(agentId, cacheName, bucketStart, bucketEnd);
             }
         }
 

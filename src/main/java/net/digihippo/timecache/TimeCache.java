@@ -1,6 +1,5 @@
 package net.digihippo.timecache;
 
-import java.lang.reflect.InvocationTargetException;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -47,18 +46,19 @@ class TimeCache implements TimeCacheServer {
     }
 
     public void installDefinitions(String name, InstallationListener installationListener) {
-        try {
-            Object o = Class.forName(name).getConstructor().newInstance();
-            DefinitionSource definitionSource = (DefinitionSource) o;
-            Map<String, ReductionDefinition<?, ?>> definitions = definitionSource.definitions();
-            this.definitions.put(name, definitions);
-            installationProgress.put(
-                name,
-                new InstallationProgress(new HashSet<>(agents.keySet()), installationListener));
-            agents.values().forEach(agent -> agent.installDefinitions(name));
-        } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | ClassNotFoundException | InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
+        Result<DefinitionSource, Exception> result = ClassLoading.loadAndCast(name, DefinitionSource.class);
+        result.consume(
+            definitionSource -> {
+                Map<String, ReductionDefinition<?, ?>> definitions = definitionSource.definitions();
+                this.definitions.put(name, definitions);
+                installationProgress.put(
+                    name,
+                    new InstallationProgress(new HashSet<>(agents.keySet()), installationListener));
+                agents.values().forEach(agent -> agent.installDefinitions(name));
+            },
+            exc -> {
+                throw new RuntimeException(exc);
+            });
     }
 
     private static final class DistributedCacheStatus<T>
@@ -197,7 +197,10 @@ class TimeCache implements TimeCacheServer {
             distributedCacheStatus.loading(currentBucketStart, loadListener);
             TimeCacheAgent[] values = agents.values().toArray(new TimeCacheAgent[agents.size()]);
             values[i % agents.size()]
-                .populateBucket(distributedCacheStatus.definition, currentBucketStart, currentBucketEnd);
+                .populateBucket(
+                    distributedCacheStatus.definition.cacheName,
+                    currentBucketStart,
+                    currentBucketEnd);
             currentBucketStart = currentBucketEnd;
             currentBucketEnd += bucketSizeMillis;
         }
@@ -244,12 +247,12 @@ class TimeCache implements TimeCacheServer {
     @Override
     public void loadComplete(
             String agentId,
-            CacheDefinition<?> cacheDefinition,
+            String cacheName,
             long bucketStart,
             long bucketEnd)
     {
         caches
-            .get(cacheDefinition.cacheName)
+            .get(cacheName)
             .loadComplete(agentId, bucketStart);
     }
 
@@ -276,23 +279,6 @@ class TimeCache implements TimeCacheServer {
         String installationKlass,
         String errorMessage) {
         installationProgress.get(installationKlass).error(agentName, errorMessage);
-    }
-
-    interface TimeCacheAgent {
-        void installDefinitions(String className);
-
-        void populateBucket(
-                TimeCache.CacheDefinition<?> cacheDefinition,
-                long currentBucketStart,
-                long currentBucketEnd);
-
-        <U, T> void iterate(
-                String cacheName,
-                long iterationKey,
-                ZonedDateTime from,
-                ZonedDateTime toExclusive,
-                String installingClass,
-                String definitionName);
     }
 
     public static class CacheDefinition<T>
@@ -322,17 +308,34 @@ class TimeCache implements TimeCacheServer {
         agents.put(agentName, timeCacheAgent);
     }
 
-    public <T> void defineCache(
-            String cacheName,
-            Class<T> cacheClass,
-            EventLoader<T> eventLoader,
-            MillitimeExtractor<T> millitimeExtractor,
-            TimeUnit bucketSize) {
-        caches.put(
-                cacheName,
-                new DistributedCacheStatus<>(
-                        new CacheDefinition<>(cacheName, cacheClass, eventLoader, millitimeExtractor, bucketSize),
-                        new HashSet<>(),
-                        new HashMap<>()));
+    public void defineCache(
+        String cacheName,
+        String cacheComponentFactoryClass) {
+        Result<CacheComponentsFactory, Exception> result =
+            ClassLoading.loadAndCast(cacheComponentFactoryClass, CacheComponentsFactory.class);
+        result.consume(
+            cacheComponentsFactory -> {
+                CacheComponentsFactory.CacheComponents<?> cacheComponents = cacheComponentsFactory.createCacheComponents();
+                //noinspection unchecked
+                caches.put(
+                    cacheName,
+                    new DistributedCacheStatus(
+                        new CacheDefinition(
+                            cacheName,
+                            cacheComponents.cacheClass,
+                            cacheComponents.eventLoader,
+                            cacheComponents.millitimeExtractor,
+                            cacheComponents.bucketSize),
+                        new HashSet<Long>(),
+                        new HashMap<Long, Set<String>>()
+                    ));
+                agents
+                    .values()
+                    .forEach(agent -> agent.defineCache(cacheName, cacheComponentFactoryClass));
+            },
+            exception -> {
+                throw new RuntimeException(exception);
+            }
+        );
     }
 }

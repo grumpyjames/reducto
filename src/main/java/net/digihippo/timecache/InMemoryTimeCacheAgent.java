@@ -1,12 +1,11 @@
 package net.digihippo.timecache;
 
-import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.function.Consumer;
 
-public class InMemoryTimeCacheAgent implements TimeCache.TimeCacheAgent {
+public class InMemoryTimeCacheAgent implements TimeCacheAgent {
     private final String agentId;
     private final TimeCacheServer timeCacheServer;
     private final Map<String, Cache<?>> caches = new HashMap<>();
@@ -20,42 +19,37 @@ public class InMemoryTimeCacheAgent implements TimeCache.TimeCacheAgent {
 
     @Override
     public void installDefinitions(String name) {
-        try {
-            Object o = Class.forName(name).getConstructor().newInstance();
-            DefinitionSource definitionSource = (DefinitionSource) o;
-            Map<String, ReductionDefinition<?, ?>> definitions = definitionSource.definitions();
-            this.definitions.put(name, definitions);
-        } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | ClassNotFoundException | InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
+        Result<DefinitionSource, Exception> result = ClassLoading.loadAndCast(name, DefinitionSource.class);
+        result.consume(
+            definitionSource -> this.definitions.put(name, definitionSource.definitions()),
+            exc -> {
+                throw new RuntimeException(exc);
+            }
+        );
     }
 
     @Override
     public void populateBucket(
-            TimeCache.CacheDefinition<?> cacheDefinition,
+            String cacheName,
             long currentBucketStart,
             long currentBucketEnd) {
-        Cache cache = caches.computeIfAbsent(
-                cacheDefinition.cacheName,
-                cacheName -> new Cache<>(cacheDefinition, currentBucketEnd - currentBucketStart));
+        Cache cache = caches.get(cacheName);
         //noinspection unchecked
-        cacheDefinition
-                .eventLoader
-                .loadEvents(
-                        Instant.ofEpochMilli(currentBucketStart),
-                        Instant.ofEpochMilli(currentBucketEnd),
-                        cache.newBucket(currentBucketStart));
+        cache
+            .loadEvents(
+                currentBucketStart,
+                currentBucketEnd);
 
         timeCacheServer
                 .loadComplete(
                         agentId,
-                        cacheDefinition,
+                        cacheName,
                         currentBucketStart,
                         currentBucketEnd);
     }
 
     @Override
-    public <U, T> void iterate(
+    public void iterate(
             String cacheName,
             long iterationKey,
             ZonedDateTime from,
@@ -63,12 +57,46 @@ public class InMemoryTimeCacheAgent implements TimeCache.TimeCacheAgent {
             String installerName,
             String definitionName) {
 
-        @SuppressWarnings("unchecked") ReductionDefinition<T, U> definition =
-            (ReductionDefinition<T, U>) definitions.get(installerName).get(definitionName);
-        @SuppressWarnings("unchecked") Cache<T> cache = (Cache<T>) caches.get(cacheName);
+        ReductionDefinition definition =
+            definitions.get(installerName).get(definitionName);
+        Cache cache = caches.get(cacheName);
         if (cache != null) {
-            cache.iterate(agentId, cacheName, iterationKey, from, toExclusive, definition, timeCacheServer);
+            //noinspection unchecked
+            cache.iterate(
+                agentId,
+                cacheName,
+                iterationKey,
+                from,
+                toExclusive,
+                definition,
+                timeCacheServer);
         }
+    }
+
+    @Override
+    public void defineCache(
+        String cacheName,
+        String cacheComponentFactoryClass)
+    {
+        Result<CacheComponentsFactory, Exception> result =
+            ClassLoading.loadAndCast(cacheComponentFactoryClass, CacheComponentsFactory.class);
+        result.consume(
+            ccf -> {
+                CacheComponentsFactory.CacheComponents cacheComponents = ccf.createCacheComponents();
+                @SuppressWarnings("unchecked") final TimeCache.CacheDefinition definition =
+                    new TimeCache.CacheDefinition(
+                        cacheName,
+                        cacheComponents.cacheClass,
+                        cacheComponents.eventLoader,
+                        cacheComponents.millitimeExtractor,
+                        cacheComponents.bucketSize);
+                //noinspection unchecked
+                caches.put(cacheName, new Cache(definition, cacheComponents.bucketSize.toMillis(1L)));
+            },
+            exc -> {
+                throw new RuntimeException(exc);
+            }
+        );
     }
 
     public static class Cache<T> {
@@ -119,6 +147,13 @@ public class InMemoryTimeCacheAgent implements TimeCache.TimeCacheAgent {
                             });
                 bucketKey += bucketSize;
             }
+        }
+
+        public void loadEvents(long from, long toExclusive) {
+            cacheDefinition.eventLoader.loadEvents(
+                Instant.ofEpochMilli(from),
+                Instant.ofEpochMilli(toExclusive),
+                newBucket(from));
         }
     }
 }

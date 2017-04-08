@@ -15,10 +15,23 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 
 public class ReloadAndPlaybackTest {
-    private final ZonedDateTime beginningOfTime =
+    private static final ZonedDateTime BEGINNING_OF_TIME =
             ZonedDateTime.of(2016, 11, 1, 0, 0, 0, 0, ZoneId.of("UTC"));
+    private static final List<NamedEvent> ALL_EVENTS = createEvents(BEGINNING_OF_TIME);
+
     private final TimeCache timeCache = new TimeCache();
-    private final List<NamedEvent> allEvents = createEvents(beginningOfTime);
+
+    public static final class MinuteCacheFactory implements CacheComponentsFactory<NamedEvent>
+    {
+        @Override
+        public CacheComponents<NamedEvent> createCacheComponents() {
+            return new CacheComponents<>(
+                NamedEvent.class,
+                new HistoricalEventLoader(ALL_EVENTS),
+                (NamedEvent ne) -> ne.time.toEpochMilli(),
+                TimeUnit.MINUTES);
+        }
+    }
 
     @Before
     public void load()
@@ -27,11 +40,8 @@ public class ReloadAndPlaybackTest {
         timeCache.addAgent("agentTwo", new InMemoryTimeCacheAgent("agentTwo", timeCache));
 
         timeCache.defineCache(
-                "historicalEvents",
-                NamedEvent.class,
-                new HistoricalEventLoader(allEvents),
-                (NamedEvent ne) -> ne.time.toEpochMilli(),
-                TimeUnit.MINUTES);
+            "historicalEvents",
+            MinuteCacheFactory.class.getName());
 
         timeCache.installDefinitions(
             PlaybackDefinitions.class.getName(),
@@ -41,41 +51,41 @@ public class ReloadAndPlaybackTest {
     @Test
     public void playbackEverything()
     {
-        load(beginningOfTime, beginningOfTime.plusHours(1));
+        load(BEGINNING_OF_TIME, BEGINNING_OF_TIME.plusHours(1));
 
         assertPlaybackContainsCorrectEvents(
-                beginningOfTime,
-                beginningOfTime.plusHours(1));
+            BEGINNING_OF_TIME,
+                BEGINNING_OF_TIME.plusHours(1));
     }
 
     @Test
     public void requestedTimeRangeContainingOneResult()
     {
-        load(beginningOfTime, beginningOfTime.plusHours(1));
+        load(BEGINNING_OF_TIME, BEGINNING_OF_TIME.plusHours(1));
 
         assertPlaybackContainsCorrectEvents(
-                beginningOfTime.plusMinutes(42),
-                beginningOfTime.plusMinutes(43));
+                BEGINNING_OF_TIME.plusMinutes(42),
+                BEGINNING_OF_TIME.plusMinutes(43));
     }
 
     @Test
     public void requestedTimeRangeWithinSingleBucket()
     {
-        load(beginningOfTime, beginningOfTime.plusHours(1));
+        load(BEGINNING_OF_TIME, BEGINNING_OF_TIME.plusHours(1));
 
         assertPlaybackContainsCorrectEvents(
-                beginningOfTime.plusMinutes(43),
-                beginningOfTime.plusMinutes(43).plusSeconds(15));
+                BEGINNING_OF_TIME.plusMinutes(43),
+                BEGINNING_OF_TIME.plusMinutes(43).plusSeconds(15));
     }
 
     @Test
     public void loadBoundariesThatAreNotBucketBoundaries()
     {
-        load(beginningOfTime.plusSeconds(1), beginningOfTime.plusSeconds(10));
+        load(BEGINNING_OF_TIME.plusSeconds(1), BEGINNING_OF_TIME.plusSeconds(10));
 
         assertPlaybackContainsCorrectEvents(
-                beginningOfTime,
-                beginningOfTime.plusSeconds(8));
+            BEGINNING_OF_TIME,
+                BEGINNING_OF_TIME.plusSeconds(8));
     }
 
     private void load(ZonedDateTime from, ZonedDateTime to) {
@@ -101,7 +111,7 @@ public class ReloadAndPlaybackTest {
                     Assert::fail
                 ));
 
-        assertThat(result, containsInAnyOrder(allEvents
+        assertThat(result, containsInAnyOrder(ALL_EVENTS
                 .stream()
                 .filter(e -> !from.toInstant().isAfter(e.time) && e.time.isBefore(to.toInstant()))
                 .collect(Collectors.toList())

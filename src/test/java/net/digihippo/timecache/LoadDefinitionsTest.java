@@ -78,7 +78,7 @@ public class LoadDefinitionsTest {
         assertThat(success, contains("woot"));
     }
 
-    private static final class NoOpAgent implements TimeCache.TimeCacheAgent {
+    private static final class NoOpAgent implements TimeCacheAgent {
         @Override
         public void installDefinitions(String className) {
 
@@ -86,20 +86,25 @@ public class LoadDefinitionsTest {
 
         @Override
         public void populateBucket(
-            TimeCache.CacheDefinition<?> cacheDefinition,
+            String cacheName,
             long currentBucketStart,
             long currentBucketEnd) {
 
         }
 
         @Override
-        public <U, T> void iterate(
+        public void iterate(
             String cacheName,
             long iterationKey,
             ZonedDateTime from,
             ZonedDateTime toExclusive,
             String installingClass,
             String definitionName) {
+
+        }
+
+        @Override
+        public void defineCache(String cacheName, String cacheComponentFactoryClass) {
 
         }
     }
