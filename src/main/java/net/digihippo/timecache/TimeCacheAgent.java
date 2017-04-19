@@ -18,5 +18,7 @@ interface TimeCacheAgent {
         String installingClass,
         String definitionName);
 
-    void defineCache(String cacheName, String cacheComponentFactoryClass);
+    void defineCache(
+        String cacheName,
+        String cacheComponentFactoryClass);
 }

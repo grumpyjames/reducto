@@ -2,7 +2,9 @@ package net.digihippo.timecache;
 
 public class ClassLoading
 {
-    static <S> Result<S, Exception> loadAndCast(final String className, final Class<S> klass)
+    static <S> Result<S, Exception> loadAndCast(
+        final String className,
+        final Class<S> klass)
     {
         try
         {

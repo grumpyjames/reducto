@@ -11,7 +11,9 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
     private final TimeCacheServer timeCacheServer;
     private final Map<String, Cache<?>> caches = new HashMap<>();
 
-    public InMemoryTimeCacheAgent(String agentId, TimeCacheServer timeCacheServer)
+    public InMemoryTimeCacheAgent(
+        String agentId,
+        TimeCacheServer timeCacheServer)
     {
         this.agentId = agentId;
         this.timeCacheServer = timeCacheServer;
@@ -111,7 +113,9 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
         private final long bucketSize;
         private final Map<Long, List<T>> buckets = new HashMap<>();
 
-        public Cache(TimeCache.CacheDefinition<T> cacheDefinition, long bucketSizeMillis)
+        public Cache(
+            TimeCache.CacheDefinition<T> cacheDefinition,
+            long bucketSizeMillis)
         {
             this.cacheDefinition = cacheDefinition;
             this.bucketSize = bucketSizeMillis;
@@ -158,7 +162,9 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
             }
         }
 
-        public void loadEvents(long from, long toExclusive)
+        public void loadEvents(
+            long from,
+            long toExclusive)
         {
             cacheDefinition.eventLoader.loadEvents(
                 Instant.ofEpochMilli(from),
