@@ -1,7 +1,6 @@
 package net.digihippo.timecache.netty;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
 import net.digihippo.timecache.TimeCacheAgent;
 
 import java.nio.charset.StandardCharsets;
@@ -9,22 +8,22 @@ import java.time.ZonedDateTime;
 
 public class RemoteNettyAgent implements TimeCacheAgent
 {
-    private final ChannelHandlerContext chc;
+    private final Channel nettyChannel;
 
-    public RemoteNettyAgent(ChannelHandlerContext chc)
+    public RemoteNettyAgent(Channel nettyChannel)
     {
-        this.chc = chc;
+        this.nettyChannel = nettyChannel;
     }
 
     @Override
     public void installDefinitions(String className)
     {
         byte[] utfEightBytes = utf8Bytes(className);
-        ByteBuf buffer = chc.alloc().buffer(1 + wireLen(utfEightBytes));
+        int messageLength = 1 + wireLen(utfEightBytes);
+        ByteBuf buffer = nettyChannel.alloc(messageLength);
         buffer.writeByte(0);
         writeBytes(utfEightBytes, buffer);
-        chc.write(buffer);
-        chc.flush();
+        nettyChannel.write(buffer);
     }
 
     @Override
@@ -34,13 +33,12 @@ public class RemoteNettyAgent implements TimeCacheAgent
         long currentBucketEnd)
     {
         byte[] bytes = utf8Bytes(cacheName);
-        ByteBuf buffer = chc.alloc().buffer(1 + wireLen(bytes) + 8 + 8);
+        ByteBuf buffer = nettyChannel.alloc(1 + wireLen(bytes) + 8 + 8);
         buffer.writeByte(1);
         writeBytes(bytes, buffer);
         buffer.writeLong(currentBucketStart);
         buffer.writeLong(currentBucketEnd);
-        chc.write(buffer);
-        chc.flush();
+        nettyChannel.write(buffer);
     }
 
     @Override
@@ -55,33 +53,32 @@ public class RemoteNettyAgent implements TimeCacheAgent
         final byte[] cacheNameBytes = utf8Bytes(cacheName);
         final byte[] installingClassBytes = utf8Bytes(installingClass);
         final byte[] definitionNameBytes = utf8Bytes(definitionName);
-        ByteBuf buffer = chc.alloc().buffer(
-                1 +
-                wireLen(cacheNameBytes) +
-                8 + 8 + 8 +
+        ByteBuf buffer = nettyChannel.alloc(
+            1 + wireLen(cacheNameBytes) + 8 + 8 + 8 +
                 wireLen(installingClassBytes) +
                 wireLen(definitionNameBytes));
         buffer.writeByte(2);
         writeBytes(cacheNameBytes, buffer);
+        buffer.writeLong(iterationKey);
         buffer.writeLong(from.toInstant().toEpochMilli());
         buffer.writeLong(toExclusive.toInstant().toEpochMilli());
         writeBytes(installingClassBytes, buffer);
         writeBytes(definitionNameBytes, buffer);
-        chc.write(buffer);
-        chc.flush();
+        nettyChannel.write(buffer);
     }
 
     @Override
     public void defineCache(String cacheName, String cacheComponentFactoryClass)
     {
         byte[] cacheNameBytes = utf8Bytes(cacheName);
-        byte[] bytes = utf8Bytes(cacheComponentFactoryClass);
-        ByteBuf buffer = chc.alloc().buffer(1 + wireLen(cacheNameBytes) + wireLen(bytes));
+        byte[] cacheComponentFactoryClassBytes = utf8Bytes(cacheComponentFactoryClass);
+        ByteBuf buffer =
+            nettyChannel.alloc(
+                1 + wireLen(cacheNameBytes) + wireLen(cacheComponentFactoryClassBytes));
         buffer.writeByte(3);
         writeBytes(cacheNameBytes, buffer);
-        writeBytes(cacheNameBytes, buffer);
-        chc.write(buffer);
-        chc.flush();
+        writeBytes(cacheComponentFactoryClassBytes, buffer);
+        nettyChannel.write(buffer);
     }
 
     private static int wireLen(byte[] cacheNameBytes)

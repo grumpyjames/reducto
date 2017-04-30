@@ -62,7 +62,7 @@ public class NettyTimeCacheServer
                 ((InetSocketAddress)ctx.channel().localAddress())
                     .getAddress()
                     .getHostAddress();
-            RemoteNettyAgent cacheAgent = new RemoteNettyAgent(ctx);
+            RemoteNettyAgent cacheAgent = new RemoteNettyAgent(new NettyChannel(ctx));
             timeCache.addAgent(host, cacheAgent);
 
             cacheAgent.defineCache("foo", "bar");
