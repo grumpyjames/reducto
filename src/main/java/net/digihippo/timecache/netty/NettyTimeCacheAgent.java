@@ -63,7 +63,6 @@ public class NettyTimeCacheAgent
         public void channelActive(ChannelHandlerContext ctx) throws Exception
         {
             super.channelActive(ctx);
-            ctx.alloc().buffer(1024);
             this.timeCacheAgent = new InMemoryTimeCacheAgent("moo", this);
         }
 
@@ -89,6 +88,7 @@ public class NettyTimeCacheAgent
             byteBuffer.flip();
             try
             {
+                byteBuffer.mark();
                 byte methodIndex = readByte();
                 switch (methodIndex)
                 {
@@ -134,6 +134,7 @@ public class NettyTimeCacheAgent
             }
             catch (EndOfMessages eom)
             {
+                byteBuffer.reset();
                 // collapse any partial messages to the start of the buffer first, mind.
                 byteBuffer.flip();
             }
