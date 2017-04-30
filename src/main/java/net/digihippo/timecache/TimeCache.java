@@ -4,7 +4,7 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-class TimeCache implements TimeCacheServer
+public class TimeCache implements TimeCacheServer
 {
     private final Map<String, TimeCacheAgent> agents = new HashMap<>();
 

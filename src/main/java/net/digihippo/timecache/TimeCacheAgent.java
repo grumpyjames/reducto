@@ -2,7 +2,7 @@ package net.digihippo.timecache;
 
 import java.time.ZonedDateTime;
 
-interface TimeCacheAgent {
+public interface TimeCacheAgent {
     void installDefinitions(String className);
 
     void populateBucket(
