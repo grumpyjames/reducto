@@ -39,7 +39,7 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
             HashMap<String, ReductionDefinition<?, ?>> result = new HashMap<>();
             result.put("default",
                 new ReductionDefinition<NamedEvent, List<NamedEvent>>(
-                    ArrayList::new, List::add, List::addAll)
+                    ArrayList::new, List::add, List::addAll, null)
             );
             return result;
         }

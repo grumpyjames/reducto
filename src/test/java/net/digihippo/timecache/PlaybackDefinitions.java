@@ -16,7 +16,8 @@ public class PlaybackDefinitions implements DefinitionSource
             new ReductionDefinition<NamedEvent, List<NamedEvent>>(
                 ArrayList::new,
                 List::add,
-                List::addAll));
+                List::addAll,
+                null));
 
         return result;
     }
