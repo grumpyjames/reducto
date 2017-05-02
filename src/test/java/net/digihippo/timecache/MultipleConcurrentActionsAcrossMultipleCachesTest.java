@@ -51,6 +51,7 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
         public CacheComponents<NamedEvent> createCacheComponents() {
             return new CacheComponents<>(
                 NamedEvent.class,
+                new NamedEvent.Broken(),
                 new HistoricalEventLoader(ALL_EVENTS),
                 (NamedEvent ne) -> ne.time.toEpochMilli(),
                 TimeUnit.MINUTES);
@@ -63,6 +64,7 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
         public CacheComponents<NamedEvent> createCacheComponents() {
             return new CacheComponents<>(
                 NamedEvent.class,
+                new NamedEvent.Broken(),
                 new HistoricalEventLoader(ALL_EVENTS),
                 (NamedEvent ne) -> ne.time.toEpochMilli(),
                 TimeUnit.HOURS);
