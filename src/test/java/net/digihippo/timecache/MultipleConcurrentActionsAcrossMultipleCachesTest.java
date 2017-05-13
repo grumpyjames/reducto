@@ -4,6 +4,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -39,8 +40,7 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
             HashMap<String, ReductionDefinition<?, ?>> result = new HashMap<>();
             result.put("default",
                 new ReductionDefinition<NamedEvent, List<NamedEvent>>(
-                    ArrayList::new, List::add, List::addAll, null)
-            );
+                    ArrayList::new, List::add, List::addAll, new ListSerializer<>(new NamedEventSerializer())));
             return result;
         }
     }
@@ -51,7 +51,7 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
         public CacheComponents<NamedEvent> createCacheComponents() {
             return new CacheComponents<>(
                 NamedEvent.class,
-                new NamedEvent.Broken(),
+                new NamedEventSerializer(),
                 new HistoricalEventLoader(ALL_EVENTS),
                 (NamedEvent ne) -> ne.time.toEpochMilli(),
                 TimeUnit.MINUTES);
@@ -64,7 +64,7 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
         public CacheComponents<NamedEvent> createCacheComponents() {
             return new CacheComponents<>(
                 NamedEvent.class,
-                new NamedEvent.Broken(),
+                new NamedEventSerializer(),
                 new HistoricalEventLoader(ALL_EVENTS),
                 (NamedEvent ne) -> ne.time.toEpochMilli(),
                 TimeUnit.HOURS);
@@ -205,14 +205,14 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
         private final String cacheName;
         private final long iterationKey;
         private final long bucketKey;
-        private final Object result;
+        private final ByteBuffer result;
 
         private BucketComplete(
             String agentId,
             String cacheName,
             long iterationKey,
             long bucketKey,
-            Object result) {
+            ByteBuffer result) {
             this.agentId = agentId;
             this.cacheName = cacheName;
             this.iterationKey = iterationKey;
@@ -254,7 +254,7 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
             String cacheName,
             long iterationKey,
             long currentBucketKey,
-            Object result) {
+            ByteBuffer result) {
             if (blocking) {
                 events.add(new BucketComplete(agentId, cacheName, iterationKey, currentBucketKey, result));
             } else {
@@ -286,4 +286,6 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
             }
         }
     }
+
+
 }

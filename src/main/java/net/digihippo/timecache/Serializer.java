@@ -1,10 +1,9 @@
 package net.digihippo.timecache;
 
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 public interface Serializer<T>
 {
-    void encode(T t, OutputStream os);
-    void decode(InputStream is, T t);
+    void encode(T t, ByteBuffer bb);
+    T decode(ByteBuffer bb);
 }

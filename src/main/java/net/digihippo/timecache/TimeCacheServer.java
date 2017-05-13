@@ -1,5 +1,7 @@
 package net.digihippo.timecache;
 
+import java.nio.ByteBuffer;
+
 public interface TimeCacheServer {
     void loadComplete(
         String agentId,
@@ -12,7 +14,7 @@ public interface TimeCacheServer {
         String cacheName,
         long iterationKey,
         long currentBucketKey,
-        Object result);
+        ByteBuffer result);
 
     void installationComplete(
         String agentName,

@@ -1,28 +1,13 @@
 package net.digihippo.timecache;
 
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 
 public final class NamedEvent {
     final Instant time;
     final String name;
-
-    public static class Broken implements Serializer<NamedEvent>
-    {
-        @Override
-        public void encode(NamedEvent namedEvent, OutputStream os)
-        {
-
-        }
-
-        @Override
-        public void decode(InputStream is, NamedEvent namedEvent)
-        {
-
-        }
-    }
 
     public static NamedEvent event(final long epochMillis, final String name) {
         return new NamedEvent(Instant.ofEpochMilli(epochMillis), name);

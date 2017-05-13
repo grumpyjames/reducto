@@ -1,5 +1,6 @@
 package net.digihippo.timecache;
 
+import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -156,7 +157,12 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
                                 })
                                 .forEach(
                                     item -> definition.reduceOne.accept(result, item));
-                            server.bucketComplete(agentId, cacheName, iterationKey, currentBucketKey, result);
+
+                            final ByteBuffer buffer = ByteBuffer.allocate(1024);
+                            definition.serializer.encode(result, buffer);
+                            buffer.flip();
+
+                            server.bucketComplete(agentId, cacheName, iterationKey, currentBucketKey, buffer);
                         });
                 bucketKey += bucketSize;
             }

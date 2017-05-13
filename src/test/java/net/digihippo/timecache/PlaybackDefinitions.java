@@ -17,7 +17,7 @@ public class PlaybackDefinitions implements DefinitionSource
                 ArrayList::new,
                 List::add,
                 List::addAll,
-                null));
+                new ListSerializer<NamedEvent>(new NamedEventSerializer())));
 
         return result;
     }

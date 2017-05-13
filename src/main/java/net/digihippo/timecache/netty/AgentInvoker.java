@@ -3,105 +3,58 @@ package net.digihippo.timecache.netty;
 import io.netty.buffer.ByteBuf;
 import net.digihippo.timecache.TimeCacheAgent;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 public class AgentInvoker
 {
-    private static final class EndOfMessages extends Exception {}
-
-    @SuppressWarnings("ThrowableInstanceNeverThrown")
-    private static final EndOfMessages END_OF_MESSAGES = new EndOfMessages();
-
     private final TimeCacheAgent timeCacheAgent;
-    private final ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    private final MessageReader messageReader = new MessageReader();
 
     public AgentInvoker(TimeCacheAgent timeCacheAgent)
     {
         this.timeCacheAgent = timeCacheAgent;
     }
 
-    private String readString() throws EndOfMessages
-    {
-        final int length = readInt();
-        final byte[] contents = new byte[length];
-        byteBuffer.get(contents, 0, length);
-        return new String(contents, StandardCharsets.UTF_8);
-    }
-
-    private long readLong() throws EndOfMessages
-    {
-        checkAvailable(8);
-        return byteBuffer.getLong();
-    }
-
-    private int readInt() throws EndOfMessages
-    {
-        checkAvailable(4);
-        return byteBuffer.getInt();
-    }
-
-    private byte readByte() throws EndOfMessages
-    {
-        checkAvailable(1);
-        return byteBuffer.get();
-    }
-
-    private void checkAvailable(int length) throws EndOfMessages
-    {
-        if (byteBuffer.remaining() < length)
-        {
-            throw END_OF_MESSAGES;
-        }
-    }
 
     public void dispatch(ByteBuf message)
     {
-        int available = message.readableBytes();
-        if (available > byteBuffer.remaining())
-        {
-            throw new RuntimeException("We just can't handle this packet length right now");
-        }
-
-        message.readBytes(byteBuffer.array(), byteBuffer.position(), available);
-        byteBuffer.position(available);
+        messageReader.readFrom(message);
         dispatchBuffer();
     }
 
     private void dispatchBuffer()
     {
-        byteBuffer.flip();
+        messageReader.flip();
         try
         {
-            byteBuffer.mark();
-            byte methodIndex = readByte();
+            messageReader.mark();
+            byte methodIndex = messageReader.readByte();
             switch (methodIndex)
             {
                 case 0:
                 {
-                    String className = readString();
+                    String className = messageReader.readString();
                     timeCacheAgent.installDefinitions(className);
                     break;
                 }
                 case 1:
                 {
-                    String cacheName = readString();
-                    long currentBucketStart = readLong();
-                    long currentBucketEnd = readLong();
+                    String cacheName = messageReader.readString();
+                    long currentBucketStart = messageReader.readLong();
+                    long currentBucketEnd = messageReader.readLong();
                     timeCacheAgent.populateBucket(cacheName, currentBucketStart, currentBucketEnd);
                     break;
                 }
                 case 2:
                 {
-                    String cacheName = readString();
-                    long iterationKey = readLong();
-                    long from = readLong();
-                    long to = readLong();
-                    String installingClass = readString();
-                    String definitionName = readString();
+                    String cacheName = messageReader.readString();
+                    long iterationKey = messageReader.readLong();
+                    long from = messageReader.readLong();
+                    long to = messageReader.readLong();
+                    String installingClass = messageReader.readString();
+                    String definitionName = messageReader.readString();
                     timeCacheAgent.iterate(
                         cacheName,
                         iterationKey,
@@ -113,8 +66,8 @@ public class AgentInvoker
                 }
                 case 3:
                 {
-                    String cacheName = readString();
-                    String cacheComponentFactoryClass = readString();
+                    String cacheName = messageReader.readString();
+                    String cacheComponentFactoryClass = messageReader.readString();
                     timeCacheAgent.defineCache(cacheName, cacheComponentFactoryClass);
                     break;
                 }
@@ -122,11 +75,9 @@ public class AgentInvoker
                     throw new RuntimeException("Unknown method requested, index " + methodIndex);
             }
         }
-        catch (EndOfMessages eom)
+        catch (MessageReader.EndOfMessages endOfMessages)
         {
-            byteBuffer.reset();
-            // collapse any partial messages to the start of the buffer first, mind.
-            byteBuffer.flip();
+            messageReader.readComplete();
         }
     }
 }

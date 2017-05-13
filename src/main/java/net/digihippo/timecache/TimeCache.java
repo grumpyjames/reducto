@@ -1,5 +1,6 @@
 package net.digihippo.timecache;
 
+import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -142,7 +143,7 @@ public class TimeCache implements TimeCacheServer
             iterationKey++;
         }
 
-        public void bucketComplete(String agentId, long iterationKey, long currentBucketKey, Object result)
+        public void bucketComplete(String agentId, long iterationKey, long currentBucketKey, ByteBuffer result)
         {
             iterations
                 .get(iterationKey)
@@ -174,10 +175,10 @@ public class TimeCache implements TimeCacheServer
             this.iterationListener = iterationListener;
         }
 
-        public void bucketComplete(String agentId, long currentBucketKey, Object result)
+        public void bucketComplete(String agentId, long currentBucketKey, ByteBuffer result)
         {
-            @SuppressWarnings("unchecked") final U fromRemote = (U) result;
-            reductionDefinition.reduceMany.accept(this.accumulator, fromRemote);
+            final U u = reductionDefinition.serializer.decode(result);
+            reductionDefinition.reduceMany.accept(this.accumulator, u);
             requiredBuckets--;
 
             if (requiredBuckets == 0)
@@ -282,7 +283,7 @@ public class TimeCache implements TimeCacheServer
         String cacheName,
         long iterationKey,
         long currentBucketKey,
-        Object result)
+        ByteBuffer result)
     {
         caches
             .get(cacheName)

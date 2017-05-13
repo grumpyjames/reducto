@@ -9,6 +9,8 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import net.digihippo.timecache.InMemoryTimeCacheAgent;
 import net.digihippo.timecache.TimeCacheServer;
 
+import java.nio.ByteBuffer;
+
 public class NettyTimeCacheAgent
 {
     public static void main(String[] args) throws InterruptedException
@@ -66,7 +68,7 @@ public class NettyTimeCacheAgent
         }
 
         @Override
-        public void bucketComplete(String agentId, String cacheName, long iterationKey, long currentBucketKey, Object result)
+        public void bucketComplete(String agentId, String cacheName, long iterationKey, long currentBucketKey, ByteBuffer result)
         {
 
         }
