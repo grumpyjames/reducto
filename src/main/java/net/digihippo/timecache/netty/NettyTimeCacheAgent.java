@@ -44,12 +44,14 @@ public class NettyTimeCacheAgent
         implements TimeCacheServer
     {
         private AgentInvoker agentInvoker;
+        private RemoteNettyServer remoteServer;
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception
         {
             super.channelActive(ctx);
             this.agentInvoker = new AgentInvoker(new InMemoryTimeCacheAgent("moo", this));
+            this.remoteServer = new RemoteNettyServer(new NettyChannel(ctx));
         }
 
         @Override
@@ -64,25 +66,25 @@ public class NettyTimeCacheAgent
         @Override
         public void loadComplete(String agentId, String cacheName, long bucketStart, long bucketEnd)
         {
-
+            remoteServer.loadComplete(agentId, cacheName, bucketStart, bucketEnd);
         }
 
         @Override
         public void bucketComplete(String agentId, String cacheName, long iterationKey, long currentBucketKey, ByteBuffer result)
         {
-
+            remoteServer.bucketComplete(agentId, cacheName, iterationKey, currentBucketKey, result);
         }
 
         @Override
         public void installationComplete(String agentName, String installationKlass)
         {
-
+            remoteServer.installationComplete(agentName, installationKlass);
         }
 
         @Override
         public void installationError(String agentName, String installationKlass, String errorMessage)
         {
-
+            remoteServer.installationError(agentName, installationKlass, errorMessage);
         }
     }
 }
