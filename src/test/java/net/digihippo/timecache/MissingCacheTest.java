@@ -14,7 +14,7 @@ import static org.junit.Assert.fail;
 public class MissingCacheTest {
     private final ZonedDateTime time =
             ZonedDateTime.of(2016, 11, 1, 0, 0, 0, 0, ZoneId.of("UTC"));
-    private final TimeCache timeCache = new TimeCache();
+    private final TimeCache timeCache = new TimeCache(TimeCacheEvents.NO_OP);
 
     @Test
     public void rejectIterationOfAbsentCache()

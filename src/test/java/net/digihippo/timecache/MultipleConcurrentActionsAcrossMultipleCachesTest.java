@@ -21,7 +21,7 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
             ZonedDateTime.of(2016, 11, 1, 0, 0, 0, 0, ZoneId.of("UTC"));
     private static final List<NamedEvent> ALL_EVENTS = createEvents(BEGINNING_OF_TIME);
 
-    private final TimeCache timeCache = new TimeCache();
+    private final TimeCache timeCache = new TimeCache(TimeCacheEvents.NO_OP);
 
     private static List<NamedEvent> createEvents(ZonedDateTime beginningOfTime) {
         return Arrays.asList(

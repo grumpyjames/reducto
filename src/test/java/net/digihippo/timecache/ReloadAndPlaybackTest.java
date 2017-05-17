@@ -19,7 +19,7 @@ public class ReloadAndPlaybackTest {
             ZonedDateTime.of(2016, 11, 1, 0, 0, 0, 0, ZoneId.of("UTC"));
     private static final List<NamedEvent> ALL_EVENTS = createEvents(BEGINNING_OF_TIME);
 
-    private final TimeCache timeCache = new TimeCache();
+    private final TimeCache timeCache = new TimeCache(TimeCacheEvents.NO_OP);
 
     public static final class MinuteCacheFactory implements CacheComponentsFactory<NamedEvent>
     {

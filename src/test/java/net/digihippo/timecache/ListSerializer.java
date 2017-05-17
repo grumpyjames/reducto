@@ -32,6 +32,7 @@ class ListSerializer<T> implements Serializer<List<T>>
         {
             events.add(inner.decode(bb));
         }
+
         return events;
     }
 }

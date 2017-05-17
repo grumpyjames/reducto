@@ -9,11 +9,20 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import net.digihippo.timecache.InMemoryTimeCacheAgent;
 import net.digihippo.timecache.TimeCacheServer;
 
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
 public class NettyTimeCacheAgent
 {
     public static void main(String[] args) throws InterruptedException
+    {
+        connectAndRunAgent("localhost", 8000);
+    }
+
+    public static void connectAndRunAgent(
+        String serverHost,
+        int serverPort)
+        throws InterruptedException
     {
         EventLoopGroup workerGroup = new NioEventLoopGroup(1);
         try {
@@ -30,7 +39,7 @@ public class NettyTimeCacheAgent
             });
 
             // Start the client.
-            ChannelFuture f = b.connect("localhost", 8000).sync(); // (5)
+            ChannelFuture f = b.connect(serverHost, serverPort).sync(); // (5)
 
             // Wait until the connection is closed.
             f.channel().closeFuture().sync();
@@ -50,7 +59,13 @@ public class NettyTimeCacheAgent
         public void channelActive(ChannelHandlerContext ctx) throws Exception
         {
             super.channelActive(ctx);
-            this.agentInvoker = new AgentInvoker(new InMemoryTimeCacheAgent("moo", this));
+            InetSocketAddress inetSocketAddress = (InetSocketAddress) ctx.channel().localAddress();
+            String host =
+                inetSocketAddress
+                    .getAddress()
+                    .getHostAddress();
+            int port = inetSocketAddress.getPort();
+            this.agentInvoker = new AgentInvoker(new InMemoryTimeCacheAgent(host + ":" + port, this));
             this.remoteServer = new RemoteNettyServer(new NettyChannel(ctx));
         }
 

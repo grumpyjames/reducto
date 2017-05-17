@@ -27,53 +27,60 @@ public class ServerInvoker
         messageReader.flip();
         try
         {
-            messageReader.mark();
-            byte methodIndex = messageReader.readByte();
-            switch (methodIndex)
+            while (messageReader.hasBytes())
             {
-                case 0:
+                messageReader.mark();
+                byte methodIndex = messageReader.readByte();
+                switch (methodIndex)
                 {
-                    String agentId = messageReader.readString();
-                    String cacheName = messageReader.readString();
-                    long bucketStart = messageReader.readLong();
-                    long bucketEnd = messageReader.readLong();
-                    endpoint.loadComplete(agentId, cacheName, bucketStart, bucketEnd);
-                    break;
-                }
-                case 1:
-                {
-                    String agentId = messageReader.readString();
-                    String cacheName = messageReader.readString();
-                    long iterationKey = messageReader.readLong();
-                    long currentBucketKey = messageReader.readLong();
-                    int capacity = messageReader.readInt();
-                    ByteBuffer buffer = ByteBuffer.allocate(capacity);
-                    messageReader.readBytes(capacity, buffer);
-                    buffer.flip();
+                    case 0:
+                    {
+                        String agentId = messageReader.readString();
+                        String cacheName = messageReader.readString();
+                        long bucketStart = messageReader.readLong();
+                        long bucketEnd = messageReader.readLong();
+                        endpoint.loadComplete(agentId, cacheName, bucketStart, bucketEnd);
+                        break;
+                    }
+                    case 1:
+                    {
+                        String agentId = messageReader.readString();
+                        String cacheName = messageReader.readString();
+                        long iterationKey = messageReader.readLong();
+                        long currentBucketKey = messageReader.readLong();
+                        int capacity = messageReader.readInt();
+                        ByteBuffer buffer = ByteBuffer.allocate(capacity);
+                        messageReader.readBytes(capacity, buffer);
+                        buffer.flip();
 
-                    endpoint.bucketComplete(agentId, cacheName, iterationKey, currentBucketKey, buffer);
-                    break;
+                        endpoint.bucketComplete(agentId, cacheName, iterationKey, currentBucketKey, buffer);
+                        break;
+                    }
+                    case 2:
+                    {
+                        String agentId = messageReader.readString();
+                        String installationKlass = messageReader.readString();
+                        endpoint.installationComplete(agentId, installationKlass);
+                        break;
+                    }
+                    case 3:
+                    {
+                        String agentId = messageReader.readString();
+                        String installationKlass = messageReader.readString();
+                        String errorMessage = messageReader.readString();
+                        endpoint.installationError(agentId, installationKlass, errorMessage);
+                        break;
+                    }
+                    default:
+                        throw new RuntimeException("Unknown method requested, index " + methodIndex);
                 }
-                case 2:
-                {
-                    String agentId = messageReader.readString();
-                    String installationKlass = messageReader.readString();
-                    endpoint.installationComplete(agentId, installationKlass);
-                    break;
-                }
-                case 3:
-                {
-                    String agentId = messageReader.readString();
-                    String installationKlass = messageReader.readString();
-                    String errorMessage = messageReader.readString();
-                    endpoint.installationError(agentId, installationKlass, errorMessage);
-                    break;
-                }
-                default:
-                    throw new RuntimeException("Unknown method requested, index " + methodIndex);
             }
         }
         catch (MessageReader.EndOfMessages endOfMessages)
+        {
+            messageReader.incompleteRead();
+        }
+        finally
         {
             messageReader.readComplete();
         }

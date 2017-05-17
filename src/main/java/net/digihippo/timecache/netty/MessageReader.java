@@ -22,10 +22,21 @@ public class MessageReader
         byteBuffer.compact();
     }
 
-    public void readBytes(int length, ByteBuffer buffer)
+    public void readBytes(int length, ByteBuffer buffer) throws EndOfMessages
     {
+        checkAvailable(length);
         byteBuffer.get(buffer.array(), 0, length);
         buffer.position(length);
+    }
+
+    public void incompleteRead()
+    {
+        byteBuffer.reset();
+    }
+
+    public boolean hasBytes()
+    {
+        return byteBuffer.remaining() > 0;
     }
 
     static final class EndOfMessages extends Exception {}
@@ -33,24 +44,26 @@ public class MessageReader
     @SuppressWarnings("ThrowableInstanceNeverThrown")
     private static final EndOfMessages END_OF_MESSAGES = new EndOfMessages();
 
-    private final ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    private final ByteBuffer byteBuffer = ByteBuffer.allocate(8192);
 
     void readFrom(ByteBuf message)
     {
         int available = message.readableBytes();
         if (available > byteBuffer.remaining())
         {
-            throw new RuntimeException("We just can't handle this packet length right now");
+            throw new RuntimeException(
+                "We just can't handle this packet length (" + available + " bytes) right now");
         }
 
         message.readBytes(byteBuffer.array(), byteBuffer.position(), available);
-        byteBuffer.position(available);
+        byteBuffer.position(byteBuffer.position() + available);
     }
 
 
     String readString() throws EndOfMessages
     {
         final int length = readInt();
+        checkAvailable(length);
         final byte[] contents = new byte[length];
         byteBuffer.get(contents, 0, length);
         return new String(contents, StandardCharsets.UTF_8);
@@ -81,6 +94,4 @@ public class MessageReader
             throw END_OF_MESSAGES;
         }
     }
-
-
 }

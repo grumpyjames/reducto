@@ -15,7 +15,7 @@ import static org.hamcrest.Matchers.*;
 
 public class LoadDefinitionsTest {
 
-    private final TimeCache timeCache = new TimeCache();
+    private final TimeCache timeCache = new TimeCache(TimeCacheEvents.NO_OP);
 
     @Before
     public void setup()

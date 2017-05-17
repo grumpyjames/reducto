@@ -27,10 +27,11 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
     {
         Result<DefinitionSource, Exception> result = ClassLoading.loadAndCast(name, DefinitionSource.class);
         result.consume(
-            definitionSource -> this.definitions.put(name, definitionSource.definitions()),
-            exc -> {
-                throw new RuntimeException(exc);
-            }
+            definitionSource -> {
+                definitions.put(name, definitionSource.definitions());
+                timeCacheServer.installationComplete(agentId, name);
+            },
+            exc -> timeCacheServer.installationError(agentId, name, exc.getMessage())
         );
     }
 

@@ -5,13 +5,32 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-public class TimeCache implements TimeCacheServer
+public class TimeCache implements TimeCacheServer, Stoppable
 {
     private final Map<String, TimeCacheAgent> agents = new HashMap<>();
 
     private final Map<String, DistributedCacheStatus<?>> caches = new HashMap<>();
     private final Map<String, Map<String, ReductionDefinition<?, ?>>> definitions = new HashMap<>();
     private final Map<String, InstallationProgress> installationProgress = new HashMap<>();
+    private final List<Stoppable> stoppables = new ArrayList<>();
+    private final TimeCacheEvents timeCacheEvents;
+
+    public TimeCache(TimeCacheEvents timeCacheEvents)
+    {
+        this.timeCacheEvents = timeCacheEvents;
+    }
+
+
+    @Override
+    public void stop()
+    {
+        stoppables.stream().forEach(Stoppable::stop);
+    }
+
+    public void addShutdownHook(Stoppable stoppable)
+    {
+        stoppables.add(stoppable);
+    }
 
     private static final class InstallationProgress
     {
@@ -59,6 +78,7 @@ public class TimeCache implements TimeCacheServer
         Result<DefinitionSource, Exception> result = ClassLoading.loadAndCast(name, DefinitionSource.class);
         result.consume(
             definitionSource -> {
+                timeCacheEvents.definitionsInstalled(name);
                 Map<String, ReductionDefinition<?, ?>> definitions = definitionSource.definitions();
                 this.definitions.put(name, definitions);
                 installationProgress.put(
@@ -275,6 +295,7 @@ public class TimeCache implements TimeCacheServer
         caches
             .get(cacheName)
             .loadComplete(agentId, bucketStart);
+        timeCacheEvents.loadComplete(agentId, cacheName, bucketStart, bucketEnd);
     }
 
     @Override
@@ -285,6 +306,9 @@ public class TimeCache implements TimeCacheServer
         long currentBucketKey,
         ByteBuffer result)
     {
+        timeCacheEvents
+            .iterationBucketComplete(
+                agentId, cacheName, iterationKey, currentBucketKey);
         caches
             .get(cacheName)
             .bucketComplete(agentId, iterationKey, currentBucketKey, result);
@@ -294,6 +318,7 @@ public class TimeCache implements TimeCacheServer
     public void installationComplete(String agentName, String installationKlass)
     {
         installationProgress.get(installationKlass).complete(agentName);
+        timeCacheEvents.definitionsInstalled(agentName, installationKlass);
     }
 
     @Override
@@ -332,6 +357,7 @@ public class TimeCache implements TimeCacheServer
     public void addAgent(String agentName, TimeCacheAgent timeCacheAgent)
     {
         agents.put(agentName, timeCacheAgent);
+        timeCacheEvents.onAgentConnected();
     }
 
     public void defineCache(
