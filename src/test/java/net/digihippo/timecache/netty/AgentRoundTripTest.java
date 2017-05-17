@@ -13,11 +13,11 @@ import org.junit.Test;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.function.Function;
+
+import static net.digihippo.timecache.netty.ThoroughSerializationTesting.runTest;
 
 public class AgentRoundTripTest
 {
@@ -62,13 +62,12 @@ public class AgentRoundTripTest
         });
     }
 
-    private final List<Invocation> invocations =
+    private static final List<Invocation<TimeCacheAgent>> ALL_POSSIBLE_INVOCATIONS =
         Arrays.asList(
-            new Invocation()
+            new Invocation<TimeCacheAgent>()
             {
-
                 @Override
-                public void installExpectation(Mockery mockery)
+                public void installExpectation(Mockery mockery, TimeCacheAgent endpoint)
                 {
                     mockery.checking(
                         new Expectations()
@@ -81,13 +80,13 @@ public class AgentRoundTripTest
                 @Override
                 public void run(TimeCacheAgent agent)
                 {
-                    timeCacheAgent.defineCache("foo", "bar");
+                    agent.defineCache("foo", "bar");
                 }
             },
-            new Invocation()
+            new Invocation<TimeCacheAgent>()
             {
                 @Override
-                public void installExpectation(Mockery mockery)
+                public void installExpectation(Mockery mockery, TimeCacheAgent endpoint)
                 {
                     mockery.checking(
                         new Expectations()
@@ -100,13 +99,13 @@ public class AgentRoundTripTest
                 @Override
                 public void run(TimeCacheAgent agent)
                 {
-                    timeCacheAgent.installDefinitions("foo");
+                    agent.installDefinitions("foo");
                 }
             },
-            new Invocation()
+            new Invocation<TimeCacheAgent>()
             {
                 @Override
-                public void installExpectation(Mockery mockery)
+                public void installExpectation(Mockery mockery, TimeCacheAgent endpoint)
                 {
                     mockery.checking(
                         new Expectations()
@@ -126,7 +125,7 @@ public class AgentRoundTripTest
                 @Override
                 public void run(TimeCacheAgent agent)
                 {
-                    timeCacheAgent.iterate(
+                    agent.iterate(
                         "foo",
                         252252L,
                         ZonedDateTime.ofInstant(Instant.ofEpochMilli(645646L), ZoneId.of("UTC")),
@@ -135,10 +134,10 @@ public class AgentRoundTripTest
                         "baz");
                 }
             },
-            new Invocation()
+            new Invocation<TimeCacheAgent>()
             {
                 @Override
-                public void installExpectation(Mockery mockery)
+                public void installExpectation(Mockery mockery, TimeCacheAgent endpoint)
                 {
                     mockery.checking(
                         new Expectations()
@@ -155,48 +154,21 @@ public class AgentRoundTripTest
                 @Override
                 public void run(TimeCacheAgent agent)
                 {
-                    timeCacheAgent.populateBucket("foo", 23298L, 2352L);
+                    agent.populateBucket("foo", 23298L, 2352L);
                 }
             }
         );
 
-    private interface Invocation
-    {
-        void installExpectation(final Mockery mockery);
-        void run(final TimeCacheAgent agent);
-    }
-
-    private <T> List<T> generateList(final Random random, final Function<Random, T> generator)
-    {
-        int size = random.nextInt(200);
-        final List<T> result = new ArrayList<>(size);
-        for (int i = 0; i < size; i++)
-        {
-             result.add(generator.apply(random));
-        }
-
-        return result;
-    }
-
-    private Invocation generateInvocation(final Random random)
-    {
-        int i = random.nextInt(4);
-        return invocations.get(i);
-    }
 
     @Test
     public void tortureTest()
     {
-        final Random random = new Random(System.currentTimeMillis());
-        final TimeCacheAgent agent = newRemoteAgent(random);
-
-        final List<Invocation> invocations = generateList(random, this::generateInvocation);
-        System.out.println("Running test with " + invocations.size() + " events");
-        for (Invocation invocation : invocations)
-        {
-            invocation.installExpectation(mockery);
-            invocation.run(agent);
-        }
+        runTest(
+            mockery,
+            TimeCacheAgent.class,
+            endpoint -> new AgentInvoker(endpoint)::dispatch,
+            RemoteNettyAgent::new,
+            ALL_POSSIBLE_INVOCATIONS);
     }
 
     @Test
