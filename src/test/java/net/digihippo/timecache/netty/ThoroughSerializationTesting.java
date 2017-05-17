@@ -25,7 +25,7 @@ public final class ThoroughSerializationTesting
         final Random random = new Random(System.currentTimeMillis());
         final T mock = mockery.mock(target, "thorough serialization target");
         final Consumer<ByteBuf> invoker = invokerFactory.apply(mock);
-        final Channel channel = new RandomFragmentChannel(random, invoker);
+        final RandomFragmentChannel channel = new RandomFragmentChannel(random, invoker);
         final T stub = stubCreator.apply(channel);
         final List<Invocation<T>> invocations = generateList(
             random, r -> possibleInvocations.get(r.nextInt(possibleInvocations.size())));

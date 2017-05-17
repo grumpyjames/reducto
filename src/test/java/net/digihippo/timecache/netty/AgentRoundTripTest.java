@@ -75,9 +75,8 @@ public class AgentRoundTripTest
             agent -> agent.populateBucket("foo", 23298L, 2352L)
         );
 
-
     @Test
-    public void tortureTest()
+    public void runThoroughTest()
     {
         runTest(
             mockery,

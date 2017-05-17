@@ -14,6 +14,7 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.List;
 
 public class ServerRoundTripTest
 {
@@ -41,6 +42,29 @@ public class ServerRoundTripTest
             }
         });
 
+    @Test
+    public void runThoroughTest()
+    {
+        List<Invocation<TimeCacheServer>> possibleInvocations = Arrays.asList(
+            server -> server.loadComplete("foo", "bar", 234279L, 345387L),
+            server -> {
+                final ByteBuffer buffer = ByteBuffer.allocate(3);
+                buffer.put(new byte[]{(byte) 6, (byte) 9, (byte) 1});
+                buffer.flip();
+                server.bucketComplete(
+                    "foo", "bar", 325235L, 2523L, buffer);
+            },
+            server -> server.installationComplete("foo", "bar"),
+            server -> server.installationError("foo", "bar", "oops")
+        );
+        ThoroughSerializationTesting.runTest(
+            mockery,
+            TimeCacheServer.class,
+            tc -> new ServerInvoker(tc)::dispatch,
+            RemoteNettyServer::new,
+            possibleInvocations
+        );
+    }
 
     @Test
     public void roundTripLoadComplete()
@@ -49,8 +73,7 @@ public class ServerRoundTripTest
             oneOf(endpoint).loadComplete("foo", "bar", 234279L, 345387L);
         }});
 
-        server.loadComplete(
-            "foo", "bar", 234279L, 345387L);
+        server.loadComplete("foo", "bar", 234279L, 345387L);
     }
 
     @Test
