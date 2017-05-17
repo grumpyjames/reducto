@@ -5,7 +5,6 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.UnpooledByteBufAllocator;
 import net.digihippo.timecache.TimeCacheAgent;
 import org.jmock.Expectations;
-import org.jmock.Mockery;
 import org.jmock.integration.junit4.JUnitRuleMockery;
 import org.junit.Rule;
 import org.junit.Test;
@@ -64,99 +63,16 @@ public class AgentRoundTripTest
 
     private static final List<Invocation<TimeCacheAgent>> ALL_POSSIBLE_INVOCATIONS =
         Arrays.asList(
-            new Invocation<TimeCacheAgent>()
-            {
-                @Override
-                public void installExpectation(Mockery mockery, TimeCacheAgent endpoint)
-                {
-                    mockery.checking(
-                        new Expectations()
-                        {{
-                            oneOf(endpoint).defineCache("foo", "bar");
-                        }}
-                    );
-                }
-
-                @Override
-                public void run(TimeCacheAgent agent)
-                {
-                    agent.defineCache("foo", "bar");
-                }
-            },
-            new Invocation<TimeCacheAgent>()
-            {
-                @Override
-                public void installExpectation(Mockery mockery, TimeCacheAgent endpoint)
-                {
-                    mockery.checking(
-                        new Expectations()
-                        {{
-                            oneOf(endpoint).installDefinitions("foo");
-                        }}
-                    );
-                }
-
-                @Override
-                public void run(TimeCacheAgent agent)
-                {
-                    agent.installDefinitions("foo");
-                }
-            },
-            new Invocation<TimeCacheAgent>()
-            {
-                @Override
-                public void installExpectation(Mockery mockery, TimeCacheAgent endpoint)
-                {
-                    mockery.checking(
-                        new Expectations()
-                        {{
-                            oneOf(endpoint)
-                                .iterate(
-                                    "foo",
-                                    252252L,
-                                    ZonedDateTime.ofInstant(Instant.ofEpochMilli(645646L), ZoneId.of("UTC")),
-                                    ZonedDateTime.ofInstant(Instant.ofEpochMilli(54964797289L), ZoneId.of("UTC")),
-                                    "bar",
-                                    "baz");
-                        }}
-                    );
-                }
-
-                @Override
-                public void run(TimeCacheAgent agent)
-                {
-                    agent.iterate(
-                        "foo",
-                        252252L,
-                        ZonedDateTime.ofInstant(Instant.ofEpochMilli(645646L), ZoneId.of("UTC")),
-                        ZonedDateTime.ofInstant(Instant.ofEpochMilli(54964797289L), ZoneId.of("UTC")),
-                        "bar",
-                        "baz");
-                }
-            },
-            new Invocation<TimeCacheAgent>()
-            {
-                @Override
-                public void installExpectation(Mockery mockery, TimeCacheAgent endpoint)
-                {
-                    mockery.checking(
-                        new Expectations()
-                        {{
-                            oneOf(endpoint)
-                                .populateBucket(
-                                    "foo",
-                                    23298L,
-                                    2352L);
-                        }}
-                    );
-                }
-
-                @Override
-                public void run(TimeCacheAgent agent)
-                {
-                    agent.populateBucket("foo", 23298L, 2352L);
-                }
-            }
+            agent -> agent.defineCache("foo", "bar"),
+            agent -> agent.installDefinitions("foo"),
+            agent -> agent.iterate(
+                "foo",
+                252252L,
+                ZonedDateTime.ofInstant(Instant.ofEpochMilli(645646L), ZoneId.of("UTC")),
+                ZonedDateTime.ofInstant(Instant.ofEpochMilli(54964797289L), ZoneId.of("UTC")),
+                "bar",
+                "baz"),
+            agent -> agent.populateBucket("foo", 23298L, 2352L)
         );
 
 

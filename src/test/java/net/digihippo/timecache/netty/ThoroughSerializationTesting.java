@@ -3,6 +3,7 @@ package net.digihippo.timecache.netty;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.UnpooledByteBufAllocator;
+import org.jmock.Expectations;
 import org.jmock.Mockery;
 
 import java.util.ArrayList;
@@ -31,7 +32,12 @@ public final class ThoroughSerializationTesting
 
         for (Invocation<T> invocation : invocations)
         {
-            invocation.installExpectation(mockery, mock);
+            mockery.checking(
+                new Expectations()
+                {{
+                    invocation.run(oneOf(mock));
+                }}
+            );
             invocation.run(stub);
         }
     }
