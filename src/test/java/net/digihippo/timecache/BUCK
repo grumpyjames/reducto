@@ -1,0 +1,16 @@
+java_test(
+  name = "timecache",
+  srcs = glob(["**/*.java"]),
+  deps = [
+    "//lib:junit",
+    "//lib:jmock-junit4",
+    "//lib:jmock",
+    "//lib:netty",
+    "//lib:hamcrest-core",
+    "//lib:hamcrest-library",
+
+    "//src/main/java/net/digihippo/timecache:timecache",
+    "//src/main/java/net/digihippo/timecache/netty:netty",
+
+  ]
+)

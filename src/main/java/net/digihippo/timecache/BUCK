@@ -1,0 +1,5 @@
+java_library(
+  name = "timecache",
+  srcs = glob(["*.java"]),
+  visibility = ["PUBLIC"],
+)
