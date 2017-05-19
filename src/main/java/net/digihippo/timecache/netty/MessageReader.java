@@ -44,15 +44,17 @@ public class MessageReader
     @SuppressWarnings("ThrowableInstanceNeverThrown")
     private static final EndOfMessages END_OF_MESSAGES = new EndOfMessages();
 
-    private final ByteBuffer byteBuffer = ByteBuffer.allocate(8192);
+    private ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
 
     void readFrom(ByteBuf message)
     {
         int available = message.readableBytes();
         if (available > byteBuffer.remaining())
         {
-            throw new RuntimeException(
-                "We just can't handle this packet length (" + available + " bytes) right now");
+            byteBuffer.flip();
+            final ByteBuffer newBuffer = ByteBuffer.allocate(byteBuffer.position() + available);
+            newBuffer.put(byteBuffer);
+            byteBuffer = newBuffer;
         }
 
         message.readBytes(byteBuffer.array(), byteBuffer.position(), available);
