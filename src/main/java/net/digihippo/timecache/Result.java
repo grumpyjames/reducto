@@ -2,16 +2,16 @@ package net.digihippo.timecache;
 
 import java.util.function.Consumer;
 
-public abstract class Result<S, F>
+abstract class Result<S, F>
 {
     public abstract void consume(final Consumer<S> onSuccess, final Consumer<F> onFailure);
 
-    public static <S, F> Result<S, F> failure(F f)
+    static <S, F> Result<S, F> failure(F f)
     {
         return new Failure<>(f);
     }
 
-    public static <S, F> Result<S, F> success(S s)
+    static <S, F> Result<S, F> success(S s)
     {
         return new Success<>(s);
     }
@@ -47,4 +47,6 @@ public abstract class Result<S, F>
             onFailure.accept(f);
         }
     }
+
+    private Result() {}
 }

@@ -113,21 +113,21 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
         );
     }
 
-    public static class Cache<T>
+    private static class Cache<T>
     {
         private final CacheDefinition<T> cacheDefinition;
         private final long bucketSize;
         private final Map<Long, List<T>> buckets = new HashMap<>();
 
-        public Cache(
-            CacheDefinition<T> cacheDefinition,
-            long bucketSizeMillis)
+        Cache(
+                CacheDefinition<T> cacheDefinition,
+                long bucketSizeMillis)
         {
             this.cacheDefinition = cacheDefinition;
             this.bucketSize = bucketSizeMillis;
         }
 
-        public Consumer<T> newBucket(long bucketStart)
+        Consumer<T> newBucket(long bucketStart)
         {
             List list = buckets.computeIfAbsent(bucketStart, bs -> new ArrayList());
             //noinspection unchecked
@@ -173,7 +173,7 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
             }
         }
 
-        public void loadEvents(
+        void loadEvents(
             long from,
             long toExclusive)
         {

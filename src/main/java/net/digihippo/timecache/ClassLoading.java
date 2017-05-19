@@ -1,6 +1,6 @@
 package net.digihippo.timecache;
 
-public class ClassLoading
+final class ClassLoading
 {
     static <S> Result<S, Exception> loadAndCast(
         final String className,
@@ -16,4 +16,6 @@ public class ClassLoading
             return Result.failure(e);
         }
     }
+
+    private ClassLoading() {}
 }
