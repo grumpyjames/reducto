@@ -14,6 +14,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 
 import static net.digihippo.timecache.netty.ThoroughSerializationTesting.runTest;
@@ -71,7 +72,8 @@ public class AgentRoundTripTest
                 ZonedDateTime.ofInstant(Instant.ofEpochMilli(645646L), ZoneId.of("UTC")),
                 ZonedDateTime.ofInstant(Instant.ofEpochMilli(54964797289L), ZoneId.of("UTC")),
                 "bar",
-                "baz"),
+                "baz",
+                Optional.empty()),
             agent -> agent.populateBucket("foo", 23298L, 2352L)
         );
 
@@ -126,7 +128,8 @@ public class AgentRoundTripTest
                         ZonedDateTime.ofInstant(Instant.ofEpochMilli(645646L), ZoneId.of("UTC")),
                         ZonedDateTime.ofInstant(Instant.ofEpochMilli(54964797289L), ZoneId.of("UTC")),
                         "bar",
-                        "baz");
+                        "baz",
+                        Optional.empty());
             }}
         );
 
@@ -136,7 +139,8 @@ public class AgentRoundTripTest
             ZonedDateTime.ofInstant(Instant.ofEpochMilli(645646L), ZoneId.of("UTC")),
             ZonedDateTime.ofInstant(Instant.ofEpochMilli(54964797289L), ZoneId.of("UTC")),
             "bar",
-            "baz");
+            "baz",
+            Optional.empty());
     }
 
     @Test

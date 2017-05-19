@@ -1,8 +1,6 @@
 package net.digihippo.timecache;
 
-import net.digihippo.timecache.api.CacheComponentsFactory;
-import net.digihippo.timecache.api.DefinitionSource;
-import net.digihippo.timecache.api.ReductionDefinition;
+import net.digihippo.timecache.api.*;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -12,6 +10,8 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
@@ -36,18 +36,40 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
 
     private BlockableServer agentTwoToServerLink;
 
+    @SuppressWarnings("WeakerAccess") // loaded reflectively
     public static class Definitions implements DefinitionSource
     {
         @Override
-        public Map<String, ReductionDefinition<?, ?>> definitions() {
-            HashMap<String, ReductionDefinition<?, ?>> result = new HashMap<>();
+        public Map<String, ReductionDefinition<?, ?, ?>> definitions() {
+            HashMap<String, ReductionDefinition<?, ?, ?>> result = new HashMap<>();
             result.put("default",
-                new ReductionDefinition<NamedEvent, List<NamedEvent>>(
-                    ArrayList::new, List::add, List::addAll, new ListSerializer<>(new NamedEventSerializer())));
+                new ReductionDefinition<NamedEvent, List<NamedEvent>, Void>(
+                    ArrayList::new,
+                    List::add,
+                    List::addAll,
+                    new ListSerializer<>(new NamedEventSerializer()),
+                    new FilterDefinition<>(
+                        new Serializer<Void>()
+                        {
+                            @Override
+                            public void encode(Void aVoid, ByteBuffer bb)
+                            {
+
+                            }
+
+                            @Override
+                            public Void decode(ByteBuffer bb)
+                            {
+                                return null;
+                            }
+                        },
+                        aVoid -> namedEvent -> true
+                    )));
             return result;
         }
     }
 
+    @SuppressWarnings("WeakerAccess") // loaded reflectively
     public static final class MinuteCacheFactory implements CacheComponentsFactory<NamedEvent>
     {
         @Override
@@ -61,6 +83,7 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
         }
     }
 
+    @SuppressWarnings("WeakerAccess") // loaded reflectively
     public static final class HourCacheFactory implements CacheComponentsFactory<NamedEvent>
     {
         @Override
@@ -136,22 +159,23 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
             new InstallationListener(() -> {}, m -> Assert.fail("found installation errors: " + m.toString())));
 
         final List<NamedEvent> minuteResults = new ArrayList<>();
-        timeCache.<NamedEvent, List<NamedEvent>>iterate(
+        timeCache.<NamedEvent, List<NamedEvent>, Void>iterate(
             "byMinute",
             start,
             end,
             Definitions.class.getName(),
             "default",
+            Optional.empty(),
             new IterationListener<>(minuteResults::addAll, Assert::fail));
 
         final List<NamedEvent> hourResults = new ArrayList<>();
-        timeCache.<NamedEvent, List<NamedEvent>>iterate(
+        timeCache.<NamedEvent, List<NamedEvent>, Void>iterate(
             "byHour",
             start,
             end,
             Definitions.class.getName(),
             "default",
-            new IterationListener<>(hourResults::addAll, Assert::fail));
+            Optional.empty(), new IterationListener<>(hourResults::addAll, Assert::fail));
 
         // The one bucketness of the hour cache should allow it to complete...
         assertThat(minuteResults, empty());
@@ -234,7 +258,7 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
         private final Queue<TimeCacheEvent> events = new ArrayDeque<>();
         private boolean blocking = false;
 
-        public BlockableServer(TimeCache timeCache) {
+        BlockableServer(TimeCache timeCache) {
             this.timeCache = timeCache;
         }
 
@@ -275,11 +299,11 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
             timeCache.installationError(agentName, installationKlass, errorMessage);
         }
 
-        public void block() {
+        void block() {
             blocking = true;
         }
 
-        public void unblockAndFlush() {
+        void unblockAndFlush() {
             blocking = false;
             TimeCacheEvent event = events.poll();
             while (event != null)

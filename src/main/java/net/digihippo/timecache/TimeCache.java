@@ -11,7 +11,7 @@ public class TimeCache implements TimeCacheServer, Stoppable
     private final Map<String, TimeCacheAgent> agents = new HashMap<>();
 
     private final Map<String, DistributedCacheStatus<?>> caches = new HashMap<>();
-    private final Map<String, Map<String, ReductionDefinition<?, ?>>> definitions = new HashMap<>();
+    private final Map<String, Map<String, ReductionDefinition<?, ?, ?>>> definitions = new HashMap<>();
     private final Map<String, InstallationProgress> installationProgress = new HashMap<>();
     private final List<Stoppable> stoppables = new ArrayList<>();
     private final TimeCacheEvents timeCacheEvents;
@@ -20,7 +20,6 @@ public class TimeCache implements TimeCacheServer, Stoppable
     {
         this.timeCacheEvents = timeCacheEvents;
     }
-
 
     @Override
     public void stop()
@@ -80,7 +79,7 @@ public class TimeCache implements TimeCacheServer, Stoppable
         result.consume(
             definitionSource -> {
                 timeCacheEvents.definitionsInstalled(name);
-                Map<String, ReductionDefinition<?, ?>> definitions = definitionSource.definitions();
+                Map<String, ReductionDefinition<?, ?, ?>> definitions = definitionSource.definitions();
                 this.definitions.put(name, definitions);
                 installationProgress.put(
                     name,
@@ -135,14 +134,15 @@ public class TimeCache implements TimeCacheServer, Stoppable
             this.bucketsLoading = bucketCount;
         }
 
-        <U> void launchNewIteration(
+        <U, F> void launchNewIteration(
             long requiredBucketCount,
             String installingClass,
             String definitionName,
-            ReductionDefinition<T, U> reductionDefinition,
+            ReductionDefinition<T, U, F> reductionDefinition,
             IterationListener<U> iterationListener,
             ZonedDateTime from,
             ZonedDateTime toExclusive,
+            Optional<F> filterArgs,
             Collection<TimeCacheAgent> agents)
         {
 
@@ -158,8 +158,24 @@ public class TimeCache implements TimeCacheServer, Stoppable
                 ));
             for (TimeCacheAgent agent : agents)
             {
+                final Optional<ByteBuffer> wireFilterArgs = filterArgs
+                    .map(f ->
+                    {
+                        final ByteBuffer buffer = ByteBuffer.allocate(1024);
+                        reductionDefinition.filterDefinition.filterSerializer.encode(f, buffer);
+                        buffer.flip();
+                        return buffer;
+                    });
+
+
                 agent.iterate(
-                    definition.cacheName, newIterationKey, from, toExclusive, installingClass, definitionName);
+                    definition.cacheName,
+                    newIterationKey,
+                    from,
+                    toExclusive,
+                    installingClass,
+                    definitionName,
+                    wireFilterArgs);
             }
             iterationKey++;
         }
@@ -172,19 +188,19 @@ public class TimeCache implements TimeCacheServer, Stoppable
         }
     }
 
-    private static class IterationStatus<T, U>
+    private static class IterationStatus<T, U, F>
     {
         private final long iterationKey;
         private long requiredBuckets;
         private final U accumulator;
-        private final ReductionDefinition<T, U> reductionDefinition;
+        private final ReductionDefinition<T, U, F> reductionDefinition;
         private final IterationListener<U> iterationListener;
 
         private IterationStatus(
             long iterationKey,
             long requiredBuckets,
             U accumulator,
-            ReductionDefinition<T, U> reductionDefinition,
+            ReductionDefinition<T, U, F> reductionDefinition,
             IterationListener<U> iterationListener)
         {
             this.iterationKey = iterationKey;
@@ -246,12 +262,13 @@ public class TimeCache implements TimeCacheServer, Stoppable
         }
     }
 
-    public <T, U> void iterate(
+    public <T, U, F> void iterate(
         String cacheName,
         ZonedDateTime from,
         ZonedDateTime toExclusive,
         String definingClass,
         String iterateeName,
+        Optional<F> filterArguments,
         IterationListener<U> iterationListener)
     {
         @SuppressWarnings("unchecked") DistributedCacheStatus<T> distributedCacheStatus =
@@ -262,8 +279,8 @@ public class TimeCache implements TimeCacheServer, Stoppable
             return;
         }
 
-        @SuppressWarnings("unchecked") final ReductionDefinition<T, U> reductionDefinition =
-            (ReductionDefinition<T, U>) definitions.get(definingClass).get(iterateeName);
+        @SuppressWarnings("unchecked") final ReductionDefinition<T, U, F> reductionDefinition =
+            (ReductionDefinition<T, U, F>) definitions.get(definingClass).get(iterateeName);
 
         final long fromMillis = from.toInstant().toEpochMilli();
         final long toMillis = toExclusive.toInstant().toEpochMilli();
@@ -281,6 +298,7 @@ public class TimeCache implements TimeCacheServer, Stoppable
             iterationListener,
             from,
             toExclusive,
+            filterArguments,
             agents.values());
     }
 

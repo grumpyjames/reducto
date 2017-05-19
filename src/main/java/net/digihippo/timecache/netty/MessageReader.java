@@ -4,39 +4,56 @@ import io.netty.buffer.ByteBuf;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 
-public class MessageReader
+class MessageReader
 {
-    public void flip()
+    void flip()
     {
         byteBuffer.flip();
     }
 
-    public void mark()
+    void mark()
     {
         byteBuffer.mark();
     }
 
-    public void readComplete()
+    void readComplete()
     {
         byteBuffer.compact();
     }
 
-    public void readBytes(int length, ByteBuffer buffer) throws EndOfMessages
+    void readBytes(int length, ByteBuffer buffer) throws EndOfMessages
     {
         checkAvailable(length);
         byteBuffer.get(buffer.array(), 0, length);
         buffer.position(length);
     }
 
-    public void incompleteRead()
+    void incompleteRead()
     {
         byteBuffer.reset();
     }
 
-    public boolean hasBytes()
+    boolean hasBytes()
     {
         return byteBuffer.remaining() > 0;
+    }
+
+    Optional<ByteBuffer> readOptionalByteBuffer() throws EndOfMessages
+    {
+        final int length = readInt();
+        if (length == 0)
+        {
+            return Optional.empty();
+        }
+        checkAvailable(length);
+        final ByteBuffer result = ByteBuffer.allocate(length);
+        result.put(byteBuffer.array(), byteBuffer.position(), byteBuffer.position() + length);
+        result.position(length);
+        result.flip();
+
+        return Optional.of(result);
     }
 
     static final class EndOfMessages extends Exception {}

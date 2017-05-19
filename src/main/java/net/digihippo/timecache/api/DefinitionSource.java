@@ -4,5 +4,5 @@ import java.util.Map;
 
 public interface DefinitionSource
 {
-    Map<String, ReductionDefinition<?,?>> definitions();
+    Map<String, ReductionDefinition<?,?,?>> definitions();
 }

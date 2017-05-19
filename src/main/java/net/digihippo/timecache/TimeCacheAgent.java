@@ -1,6 +1,8 @@
 package net.digihippo.timecache;
 
+import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
+import java.util.Optional;
 
 public interface TimeCacheAgent {
     void installDefinitions(String className);
@@ -16,7 +18,7 @@ public interface TimeCacheAgent {
         ZonedDateTime from,
         ZonedDateTime toExclusive,
         String installingClass,
-        String definitionName);
+        String definitionName, Optional<ByteBuffer> wireFilterArgs);
 
     void defineCache(
         String cacheName,

@@ -7,8 +7,12 @@ import org.junit.Test;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static net.digihippo.timecache.NamedEvent.event;
@@ -22,6 +26,7 @@ public class ReloadAndPlaybackTest {
 
     private final TimeCache timeCache = new TimeCache(TimeCacheEvents.NO_OP);
 
+    @SuppressWarnings("WeakerAccess") // loaded reflectively
     public static final class MinuteCacheFactory implements CacheComponentsFactory<NamedEvent>
     {
         @Override
@@ -57,7 +62,18 @@ public class ReloadAndPlaybackTest {
 
         assertPlaybackContainsCorrectEvents(
             BEGINNING_OF_TIME,
-                BEGINNING_OF_TIME.plusHours(1));
+                BEGINNING_OF_TIME.plusHours(1), Optional.empty());
+    }
+
+    @Test
+    public void playbackEverythingExceptBananas()
+    {
+        load(BEGINNING_OF_TIME, BEGINNING_OF_TIME.plusHours(1));
+
+        assertPlaybackContainsCorrectEvents(
+            BEGINNING_OF_TIME,
+            BEGINNING_OF_TIME.plusHours(1),
+            Optional.of("banana"));
     }
 
     @Test
@@ -67,7 +83,7 @@ public class ReloadAndPlaybackTest {
 
         assertPlaybackContainsCorrectEvents(
                 BEGINNING_OF_TIME.plusMinutes(42),
-                BEGINNING_OF_TIME.plusMinutes(43));
+                BEGINNING_OF_TIME.plusMinutes(43), Optional.empty());
     }
 
     @Test
@@ -77,7 +93,7 @@ public class ReloadAndPlaybackTest {
 
         assertPlaybackContainsCorrectEvents(
                 BEGINNING_OF_TIME.plusMinutes(43),
-                BEGINNING_OF_TIME.plusMinutes(43).plusSeconds(15));
+                BEGINNING_OF_TIME.plusMinutes(43).plusSeconds(15), Optional.empty());
     }
 
     @Test
@@ -87,7 +103,7 @@ public class ReloadAndPlaybackTest {
 
         assertPlaybackContainsCorrectEvents(
             BEGINNING_OF_TIME,
-                BEGINNING_OF_TIME.plusSeconds(8));
+                BEGINNING_OF_TIME.plusSeconds(8), Optional.empty());
     }
 
     private void load(ZonedDateTime from, ZonedDateTime to) {
@@ -99,23 +115,30 @@ public class ReloadAndPlaybackTest {
     }
 
     private void assertPlaybackContainsCorrectEvents(
-            ZonedDateTime from,
-            ZonedDateTime to) {
+        ZonedDateTime from,
+        ZonedDateTime to,
+        Optional<String> filterArgs) {
         ArrayList<NamedEvent> result = new ArrayList<>();
-        timeCache.<NamedEvent, List<NamedEvent>>iterate(
+        timeCache.<NamedEvent, List<NamedEvent>, String>iterate(
                 "historicalEvents",
                 from,
                 to,
                 PlaybackDefinitions.class.getName(),
                 "default",
+                filterArgs,
                 new IterationListener<>(
                     result::addAll,
                     Assert::fail
                 ));
 
+        final Predicate<NamedEvent> pred =
+            filterArgs
+                .map(f -> (Predicate<NamedEvent>) namedEvent -> !namedEvent.name.contains(f))
+                .orElse(namedEvent -> true);
         assertThat(result, containsInAnyOrder(ALL_EVENTS
                 .stream()
                 .filter(e -> !from.toInstant().isAfter(e.time) && e.time.isBefore(to.toInstant()))
+                .filter(pred)
                 .collect(Collectors.toList())
                 .toArray()));
     }

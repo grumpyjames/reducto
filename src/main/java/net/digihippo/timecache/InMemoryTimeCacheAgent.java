@@ -9,6 +9,8 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class InMemoryTimeCacheAgent implements TimeCacheAgent
 {
@@ -24,7 +26,7 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
         this.timeCacheServer = timeCacheServer;
     }
 
-    private final Map<String, Map<String, ReductionDefinition<?, ?>>> definitions = new HashMap<>();
+    private final Map<String, Map<String, ReductionDefinition<?, ?, ?>>> definitions = new HashMap<>();
 
     @Override
     public void installDefinitions(String name)
@@ -67,11 +69,17 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
         ZonedDateTime from,
         ZonedDateTime toExclusive,
         String installerName,
-        String definitionName)
+        String definitionName,
+        Optional<ByteBuffer> wireFilterArgs)
     {
 
         ReductionDefinition definition =
             definitions.get(installerName).get(definitionName);
+        @SuppressWarnings("unchecked") final Predicate predicate =
+            (Predicate) definition.filterDefinition.predicateLoader.apply(
+                wireFilterArgs.map((Function<ByteBuffer, Object>) definition.filterDefinition.filterSerializer::decode));
+
+
         Cache cache = caches.get(cacheName);
         if (cache != null)
         {
@@ -83,6 +91,7 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
                 from,
                 toExclusive,
                 definition,
+                predicate,
                 timeCacheServer);
         }
     }
@@ -134,13 +143,14 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
             return list::add;
         }
 
-        public <U> void iterate(
+        public <U, F> void iterate(
             String agentId,
             String cacheName,
             long iterationKey,
             ZonedDateTime from,
             ZonedDateTime toExclusive,
-            ReductionDefinition<T, U> definition,
+            ReductionDefinition<T, U, F> definition,
+            Predicate<T> predicate,
             TimeCacheServer server)
         {
             long fromEpochMilli = from.toInstant().toEpochMilli();
@@ -158,7 +168,7 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
                                 .stream()
                                 .filter(e -> {
                                     long eTime = cacheDefinition.millitimeExtractor.apply(e);
-                                    return fromEpochMilli <= eTime && eTime < toEpochMilli;
+                                    return fromEpochMilli <= eTime && eTime < toEpochMilli && predicate.test(e);
                                 })
                                 .forEach(
                                     item -> definition.reduceOne.accept(result, item));

@@ -3,22 +3,23 @@ package net.digihippo.timecache.netty;
 import io.netty.buffer.ByteBuf;
 import net.digihippo.timecache.TimeCacheAgent;
 
+import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Optional;
 
-public class AgentInvoker
+class AgentInvoker
 {
     private final TimeCacheAgent timeCacheAgent;
     private final MessageReader messageReader = new MessageReader();
 
-    public AgentInvoker(TimeCacheAgent timeCacheAgent)
+    AgentInvoker(TimeCacheAgent timeCacheAgent)
     {
         this.timeCacheAgent = timeCacheAgent;
     }
 
-
-    public void dispatch(ByteBuf message)
+    void dispatch(ByteBuf message)
     {
         messageReader.readFrom(message);
         dispatchBuffer();
@@ -57,13 +58,16 @@ public class AgentInvoker
                         long to = messageReader.readLong();
                         String installingClass = messageReader.readString();
                         String definitionName = messageReader.readString();
+                        Optional<ByteBuffer> filterArgs = messageReader.readOptionalByteBuffer();
+
                         timeCacheAgent.iterate(
                             cacheName,
                             iterationKey,
                             ZonedDateTime.ofInstant(Instant.ofEpochMilli(from), ZoneId.of("UTC")),
                             ZonedDateTime.ofInstant(Instant.ofEpochMilli(to), ZoneId.of("UTC")),
                             installingClass,
-                            definitionName);
+                            definitionName,
+                            filterArgs);
                         break;
                     }
                     case 3:

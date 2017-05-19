@@ -10,6 +10,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -35,6 +36,7 @@ public class EndToEndAcceptanceTest
         return events;
     }
 
+    @SuppressWarnings("WeakerAccess") // accessed reflectively
     public static final class CacheDefinition implements CacheComponentsFactory<NamedEvent>
     {
         @Override
@@ -106,7 +108,7 @@ public class EndToEndAcceptanceTest
                 BEGINNING_OF_TIME.plusMinutes(8),
                 PlaybackDefinitions.class.getName(),
                 "default",
-                new IterationListener<>(o -> {
+                Optional.empty(), new IterationListener<>(o -> {
                     List<NamedEvent> events = (List<NamedEvent>) o;
                     System.out.println("Found " + events.size() + " events");
                     events.forEach(ne -> System.out.println(ne));

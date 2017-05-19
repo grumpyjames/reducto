@@ -6,6 +6,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.hamcrest.Matchers.contains;
 import static org.junit.Assert.assertThat;
@@ -26,7 +27,7 @@ public class MissingCacheTest {
                 time.plusDays(1),
                 "unused",
                 "unused",
-                new IterationListener<>(
+            Optional.empty(), new IterationListener<>(
                         (o) -> fail(o.toString()), errors::add));
 
         assertThat(errors, contains("Cache 'nonexistent' not found"));

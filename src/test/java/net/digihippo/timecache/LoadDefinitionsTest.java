@@ -4,11 +4,9 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -99,7 +97,7 @@ public class LoadDefinitionsTest {
             ZonedDateTime from,
             ZonedDateTime toExclusive,
             String installingClass,
-            String definitionName) {
+            String definitionName, Optional<ByteBuffer> wireFilterArgs) {
 
         }
 
