@@ -1,9 +1,10 @@
 package net.digihippo.timecache;
 
+import net.digihippo.timecache.api.*;
+
 import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 public class TimeCache implements TimeCacheServer, Stoppable
 {
@@ -328,30 +329,6 @@ public class TimeCache implements TimeCacheServer, Stoppable
         String errorMessage)
     {
         installationProgress.get(installationKlass).error(agentName, errorMessage);
-    }
-
-    public static class CacheDefinition<T>
-    {
-        public final String cacheName;
-        public final Class<T> cacheClass;
-        public final EventLoader<T> eventLoader;
-        public final MillitimeExtractor<T> millitimeExtractor;
-        public final TimeUnit bucketSize;
-
-        public CacheDefinition(
-            String cacheName,
-            Class<T> cacheClass,
-            EventLoader<T> eventLoader,
-            MillitimeExtractor<T> millitimeExtractor,
-            TimeUnit bucketSize)
-        {
-
-            this.cacheName = cacheName;
-            this.cacheClass = cacheClass;
-            this.eventLoader = eventLoader;
-            this.millitimeExtractor = millitimeExtractor;
-            this.bucketSize = bucketSize;
-        }
     }
 
     public void addAgent(String agentName, TimeCacheAgent timeCacheAgent)

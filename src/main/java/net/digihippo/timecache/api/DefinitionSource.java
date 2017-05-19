@@ -1,4 +1,4 @@
-package net.digihippo.timecache;
+package net.digihippo.timecache.api;
 
 import java.util.Map;
 

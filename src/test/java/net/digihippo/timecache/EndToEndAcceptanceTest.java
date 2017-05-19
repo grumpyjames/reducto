@@ -1,5 +1,6 @@
 package net.digihippo.timecache;
 
+import net.digihippo.timecache.api.CacheComponentsFactory;
 import net.digihippo.timecache.netty.NettyTimeCacheAgent;
 import net.digihippo.timecache.netty.NettyTimeCacheServer;
 import org.junit.Test;

@@ -1,5 +1,7 @@
 package net.digihippo.timecache;
 
+import net.digihippo.timecache.api.Serializer;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;

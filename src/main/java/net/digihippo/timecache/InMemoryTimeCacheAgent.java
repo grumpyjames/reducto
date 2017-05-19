@@ -1,5 +1,9 @@
 package net.digihippo.timecache;
 
+import net.digihippo.timecache.api.CacheComponentsFactory;
+import net.digihippo.timecache.api.DefinitionSource;
+import net.digihippo.timecache.api.ReductionDefinition;
+
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -93,8 +97,8 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
         result.consume(
             ccf -> {
                 CacheComponentsFactory.CacheComponents cacheComponents = ccf.createCacheComponents();
-                @SuppressWarnings("unchecked") final TimeCache.CacheDefinition definition =
-                    new TimeCache.CacheDefinition(
+                @SuppressWarnings("unchecked") final CacheDefinition definition =
+                    new CacheDefinition(
                         cacheName,
                         cacheComponents.cacheClass,
                         cacheComponents.eventLoader,
@@ -111,12 +115,12 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
 
     public static class Cache<T>
     {
-        private final TimeCache.CacheDefinition<T> cacheDefinition;
+        private final CacheDefinition<T> cacheDefinition;
         private final long bucketSize;
         private final Map<Long, List<T>> buckets = new HashMap<>();
 
         public Cache(
-            TimeCache.CacheDefinition<T> cacheDefinition,
+            CacheDefinition<T> cacheDefinition,
             long bucketSizeMillis)
         {
             this.cacheDefinition = cacheDefinition;

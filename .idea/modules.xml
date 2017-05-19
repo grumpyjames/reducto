@@ -2,7 +2,10 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/timecache.iml" filepath="$PROJECT_DIR$/timecache.iml" />
+      <module fileurl="file://$PROJECT_DIR$/project_root.iml" filepath="$PROJECT_DIR$/project_root.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/main/java/net/digihippo/timecache/src_main_java_net_digihippo_timecache.iml" filepath="$PROJECT_DIR$/src/main/java/net/digihippo/timecache/src_main_java_net_digihippo_timecache.iml" group="modules" />
+      <module fileurl="file://$PROJECT_DIR$/src/main/java/net/digihippo/timecache/netty/src_main_java_net_digihippo_timecache_netty.iml" filepath="$PROJECT_DIR$/src/main/java/net/digihippo/timecache/netty/src_main_java_net_digihippo_timecache_netty.iml" group="modules" />
+      <module fileurl="file://$PROJECT_DIR$/src/test/java/net/digihippo/timecache/src_test_java_net_digihippo_timecache.iml" filepath="$PROJECT_DIR$/src/test/java/net/digihippo/timecache/src_test_java_net_digihippo_timecache.iml" group="modules" />
     </modules>
   </component>
 </project>

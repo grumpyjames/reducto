@@ -1,4 +1,4 @@
-package net.digihippo.timecache;
+package net.digihippo.timecache.api;
 
 import java.time.Instant;
 import java.util.function.Consumer;

@@ -1,4 +1,4 @@
-package net.digihippo.timecache;
+package net.digihippo.timecache.api;
 
 import java.util.concurrent.TimeUnit;
 
@@ -6,11 +6,11 @@ public interface CacheComponentsFactory<T>
 {
     final class CacheComponents<T>
     {
-        final Class<T> cacheClass;
-        final Serializer<T> serializer;
-        final EventLoader<T> eventLoader;
-        final MillitimeExtractor<T> millitimeExtractor;
-        final TimeUnit bucketSize;
+        public final Class<T> cacheClass;
+        public final Serializer<T> serializer;
+        public final EventLoader<T> eventLoader;
+        public final MillitimeExtractor<T> millitimeExtractor;
+        public final TimeUnit bucketSize;
 
         public CacheComponents(
             Class<T> cacheClass,

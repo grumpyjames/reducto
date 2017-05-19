@@ -1,5 +1,7 @@
 package net.digihippo.timecache;
 
+import net.digihippo.timecache.api.EventLoader;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.function.Consumer;

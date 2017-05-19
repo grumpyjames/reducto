@@ -1,5 +1,8 @@
 package net.digihippo.timecache;
 
+import net.digihippo.timecache.api.DefinitionSource;
+import net.digihippo.timecache.api.ReductionDefinition;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

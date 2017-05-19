@@ -1,5 +1,8 @@
 package net.digihippo.timecache;
 
+import net.digihippo.timecache.api.CacheComponentsFactory;
+import net.digihippo.timecache.api.DefinitionSource;
+import net.digihippo.timecache.api.ReductionDefinition;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

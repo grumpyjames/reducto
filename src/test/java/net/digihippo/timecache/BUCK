@@ -10,6 +10,7 @@ java_test(
     "//lib:hamcrest-library",
 
     "//src/main/java/net/digihippo/timecache:timecache",
+    "//src/main/java/net/digihippo/timecache/api:api",
     "//src/main/java/net/digihippo/timecache/netty:netty",
 
   ]
