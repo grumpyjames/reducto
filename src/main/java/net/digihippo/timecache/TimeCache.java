@@ -25,7 +25,7 @@ public class TimeCache implements TimeCacheServer, Stoppable
     @Override
     public void stop()
     {
-        stoppables.stream().forEach(Stoppable::stop);
+        stoppables.forEach(Stoppable::stop);
     }
 
     public void addShutdownHook(Stoppable stoppable)
@@ -45,13 +45,13 @@ public class TimeCache implements TimeCacheServer, Stoppable
             this.listener = listener;
         }
 
-        public void complete(String agentName)
+        void complete(String agentName)
         {
             remainingAgents.remove(agentName);
             tryCompletion();
         }
 
-        public void error(String agentName, String errorMessage)
+        void error(String agentName, String errorMessage)
         {
             remainingAgents.remove(agentName);
             errors.put(agentName, errorMessage);
@@ -124,18 +124,18 @@ public class TimeCache implements TimeCacheServer, Stoppable
             }
         }
 
-        public void loading(long currentBucketStart, LoadListener loadListener)
+        void loading(long currentBucketStart, LoadListener loadListener)
         {
             loadingKeys.add(currentBucketStart);
             this.loadListener = loadListener;
         }
 
-        public void loadingStarted(long bucketCount)
+        void loadingStarted(long bucketCount)
         {
             this.bucketsLoading = bucketCount;
         }
 
-        public <U> void launchNewIteration(
+        <U> void launchNewIteration(
             long requiredBucketCount,
             String installingClass,
             String definitionName,
@@ -164,14 +164,12 @@ public class TimeCache implements TimeCacheServer, Stoppable
             iterationKey++;
         }
 
-        public void bucketComplete(String agentId, long iterationKey, long currentBucketKey, ByteBuffer result)
+        void bucketComplete(String agentId, long iterationKey, long currentBucketKey, ByteBuffer result)
         {
             iterations
                 .get(iterationKey)
                 .bucketComplete(agentId, currentBucketKey, result);
         }
-
-
     }
 
     private static class IterationStatus<T, U>
@@ -196,7 +194,7 @@ public class TimeCache implements TimeCacheServer, Stoppable
             this.iterationListener = iterationListener;
         }
 
-        public void bucketComplete(String agentId, long currentBucketKey, ByteBuffer result)
+        void bucketComplete(String agentId, long currentBucketKey, ByteBuffer result)
         {
             final U u = reductionDefinition.serializer.decode(result);
             reductionDefinition.reduceMany.accept(this.accumulator, u);
@@ -209,7 +207,7 @@ public class TimeCache implements TimeCacheServer, Stoppable
         }
     }
 
-    public void load(
+    void load(
         String cacheName,
         ZonedDateTime fromInclusive,
         ZonedDateTime toExclusive,
