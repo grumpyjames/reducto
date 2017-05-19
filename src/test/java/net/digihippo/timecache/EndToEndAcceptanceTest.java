@@ -108,7 +108,8 @@ public class EndToEndAcceptanceTest
                 BEGINNING_OF_TIME.plusMinutes(8),
                 PlaybackDefinitions.class.getName(),
                 "default",
-                Optional.empty(), new IterationListener<>(o -> {
+                Optional.of("6"),
+                new IterationListener<>(o -> {
                     List<NamedEvent> events = (List<NamedEvent>) o;
                     System.out.println("Found " + events.size() + " events");
                     events.forEach(ne -> System.out.println(ne));

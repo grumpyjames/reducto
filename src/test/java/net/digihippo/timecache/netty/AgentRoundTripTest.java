@@ -9,6 +9,7 @@ import org.jmock.integration.junit4.JUnitRuleMockery;
 import org.junit.Rule;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -121,6 +122,12 @@ public class AgentRoundTripTest
         mockery.checking(
             new Expectations()
             {{
+                ByteBuffer bb = ByteBuffer.allocate(3);
+                bb.put((byte) 2);
+                bb.put((byte) 7);
+                bb.put((byte) 11);
+                bb.flip();
+
                 oneOf(endpoint)
                     .iterate(
                         "foo",
@@ -129,10 +136,15 @@ public class AgentRoundTripTest
                         ZonedDateTime.ofInstant(Instant.ofEpochMilli(54964797289L), ZoneId.of("UTC")),
                         "bar",
                         "baz",
-                        Optional.empty());
+                        Optional.of(bb));
             }}
         );
 
+        ByteBuffer bb = ByteBuffer.allocate(3);
+        bb.put((byte) 2);
+        bb.put((byte) 7);
+        bb.put((byte) 11);
+        bb.flip();
         timeCacheAgent.iterate(
             "foo",
             252252L,
@@ -140,7 +152,7 @@ public class AgentRoundTripTest
             ZonedDateTime.ofInstant(Instant.ofEpochMilli(54964797289L), ZoneId.of("UTC")),
             "bar",
             "baz",
-            Optional.empty());
+            Optional.of(bb));
     }
 
     @Test

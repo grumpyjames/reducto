@@ -49,7 +49,7 @@ class MessageReader
         }
         checkAvailable(length);
         final ByteBuffer result = ByteBuffer.allocate(length);
-        result.put(byteBuffer.array(), byteBuffer.position(), byteBuffer.position() + length);
+        result.put(byteBuffer.array(), byteBuffer.position(), length);
         result.position(length);
         result.flip();
 
