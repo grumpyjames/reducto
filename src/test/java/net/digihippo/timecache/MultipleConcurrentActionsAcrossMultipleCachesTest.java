@@ -157,7 +157,7 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
             new InstallationListener(() -> {}, m -> Assert.fail("found installation errors: " + m.toString())));
 
         final List<NamedEvent> minuteResults = new ArrayList<>();
-        timeCache.<List<NamedEvent>>iterate(
+        timeCache.iterate(
             "byMinute",
             start,
             end,
@@ -169,7 +169,7 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
                 Assert::fail));
 
         final List<NamedEvent> hourResults = new ArrayList<>();
-        timeCache.<List<NamedEvent>>iterate(
+        timeCache.iterate(
             "byHour",
             start,
             end,

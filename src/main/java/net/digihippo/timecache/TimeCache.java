@@ -266,7 +266,7 @@ public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheAdministr
     }
 
     @Override
-    public <U> void iterate(
+    public void iterate(
         String cacheName,
         ZonedDateTime from,
         ZonedDateTime toExclusive,

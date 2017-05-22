@@ -131,7 +131,7 @@ public class ReloadAndPlaybackTest {
 
             return buffer;
         });
-        timeCache.<List<NamedEvent>>iterate(
+        timeCache.iterate(
                 "historicalEvents",
                 from,
                 to,

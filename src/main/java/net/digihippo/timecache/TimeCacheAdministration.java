@@ -8,7 +8,7 @@ public interface TimeCacheAdministration
 {
     void installDefinitions(String name, InstallationListener installationListener);
 
-    <U> void iterate(
+    void iterate(
         String cacheName,
         ZonedDateTime from,
         ZonedDateTime toExclusive,
