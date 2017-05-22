@@ -48,7 +48,8 @@ public class ReloadAndPlaybackTest {
 
         timeCache.defineCache(
             "historicalEvents",
-            MinuteCacheFactory.class.getName());
+            MinuteCacheFactory.class.getName(),
+            new DefinitionListener((e) -> { throw new RuntimeException(e); }, () -> {}));
 
         timeCache.installDefinitions(
             PlaybackDefinitions.class.getName(),

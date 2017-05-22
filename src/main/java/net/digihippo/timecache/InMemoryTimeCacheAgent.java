@@ -115,6 +115,7 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
                         cacheComponents.bucketSize);
                 //noinspection unchecked
                 caches.put(cacheName, new Cache(definition, cacheComponents.bucketSize.toMillis(1L)));
+                timeCacheServer.cacheDefined(agentId, cacheName);
             },
             exc -> {
                 throw new RuntimeException(exc);

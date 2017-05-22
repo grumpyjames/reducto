@@ -101,5 +101,11 @@ public class NettyTimeCacheAgent
         {
             remoteServer.installationError(agentName, installationKlass, errorMessage);
         }
+
+        @Override
+        public void cacheDefined(String agentId, String cacheName)
+        {
+            remoteServer.cacheDefined(agentId, cacheName);
+        }
     }
 }

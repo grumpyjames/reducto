@@ -71,6 +71,13 @@ public class ServerInvoker
                         endpoint.installationError(agentId, installationKlass, errorMessage);
                         break;
                     }
+                    case 4:
+                    {
+                        String agentId = messageReader.readString();
+                        String cacheName = messageReader.readString();
+                        endpoint.cacheDefined(agentId, cacheName);
+                        break;
+                    }
                     default:
                         throw new RuntimeException("Unknown method requested, index " + methodIndex);
                 }

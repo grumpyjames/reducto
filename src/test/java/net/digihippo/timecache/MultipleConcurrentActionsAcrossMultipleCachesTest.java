@@ -10,14 +10,10 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-import java.util.function.Predicate;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class MultipleConcurrentActionsAcrossMultipleCachesTest {
     private static final ZonedDateTime BEGINNING_OF_TIME =
@@ -110,11 +106,13 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
 
         timeCache.defineCache(
             "byMinute",
-            MinuteCacheFactory.class.getName());
+            MinuteCacheFactory.class.getName(),
+            new DefinitionListener((e) -> { throw new RuntimeException(e); }, () -> {}));
 
         timeCache.defineCache(
             "byHour",
-            HourCacheFactory.class.getName());
+            HourCacheFactory.class.getName(),
+            new DefinitionListener((e) -> { throw new RuntimeException(e); }, () -> {}));
     }
 
     @Test
@@ -297,6 +295,12 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
         @Override
         public void installationError(String agentName, String installationKlass, String errorMessage) {
             timeCache.installationError(agentName, installationKlass, errorMessage);
+        }
+
+        @Override
+        public void cacheDefined(String agentId, String cacheName)
+        {
+            timeCache.cacheDefined(agentId, cacheName);
         }
 
         void block() {

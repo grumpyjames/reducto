@@ -9,7 +9,7 @@ import java.util.*;
 public class TimeCache implements TimeCacheServer, Stoppable
 {
     private final Map<String, TimeCacheAgent> agents = new HashMap<>();
-
+    private final Map<String, DefinitionStatus> definitionStatuses = new HashMap<>();
     private final Map<String, DistributedCacheStatus<?>> caches = new HashMap<>();
     private final Map<String, Map<String, ReductionDefinition<?, ?, ?>>> definitions = new HashMap<>();
     private final Map<String, InstallationProgress> installationProgress = new HashMap<>();
@@ -347,6 +347,12 @@ public class TimeCache implements TimeCacheServer, Stoppable
         installationProgress.get(installationKlass).error(agentName, errorMessage);
     }
 
+    @Override
+    public void cacheDefined(String agentId, String cacheName)
+    {
+        definitionStatuses.get(cacheName).agentDefinitionComplete(agentId);
+    }
+
     public void addAgent(String agentName, TimeCacheAgent timeCacheAgent)
     {
         agents.put(agentName, timeCacheAgent);
@@ -355,13 +361,59 @@ public class TimeCache implements TimeCacheServer, Stoppable
 
     public void defineCache(
         String cacheName,
-        String cacheComponentFactoryClass)
+        String cacheComponentFactoryClass,
+        DefinitionListener definitionListener)
     {
         Result<CacheComponentsFactory, Exception> result =
             ClassLoading.loadAndCast(cacheComponentFactoryClass, CacheComponentsFactory.class);
         result.consume(
             cacheComponentsFactory -> {
                 CacheComponentsFactory.CacheComponents<?> cacheComponents = cacheComponentsFactory.createCacheComponents();
+                //noinspection unchecked
+                definitionStatuses
+                    .put(
+                        cacheName,
+                        new DefinitionStatus(
+                            cacheName,
+                            cacheComponents,
+                            definitionListener,
+                            new HashSet<>(agents.keySet())
+                        ));
+
+                agents
+                    .values()
+                    .forEach(agent -> agent.defineCache(cacheName, cacheComponentFactoryClass));
+            },
+            exception ->
+                definitionListener.onError.accept(
+                    "Unable to define cache '" + cacheName + "', encountered " + exception.toString())
+        );
+    }
+
+    private final class DefinitionStatus
+    {
+        private final String cacheName;
+        private final CacheComponentsFactory.CacheComponents<?> cacheComponents;
+        private final DefinitionListener definitionListener;
+        private final HashSet<String> waitingFor;
+
+        private DefinitionStatus(
+            String cacheName,
+            CacheComponentsFactory.CacheComponents<?> cacheComponents,
+            DefinitionListener definitionListener,
+            HashSet<String> waitingFor)
+        {
+            this.cacheName = cacheName;
+            this.cacheComponents = cacheComponents;
+            this.definitionListener = definitionListener;
+            this.waitingFor = waitingFor;
+        }
+
+        public void agentDefinitionComplete(String agentId)
+        {
+            waitingFor.remove(agentId);
+            if (waitingFor.isEmpty())
+            {
                 //noinspection unchecked
                 caches.put(
                     cacheName,
@@ -372,16 +424,11 @@ public class TimeCache implements TimeCacheServer, Stoppable
                             cacheComponents.eventLoader,
                             cacheComponents.millitimeExtractor,
                             cacheComponents.bucketSize),
-                        new HashSet<>(),
-                        new HashMap<>()
+                        new HashSet<Long>(),
+                        new HashMap<Long, Set<String>>()
                     ));
-                agents
-                    .values()
-                    .forEach(agent -> agent.defineCache(cacheName, cacheComponentFactoryClass));
-            },
-            exception -> {
-                throw new RuntimeException(exception);
+                definitionListener.onSuccess.run();
             }
-        );
+        }
     }
 }

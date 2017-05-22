@@ -109,4 +109,18 @@ public class RemoteNettyServer implements TimeCacheServer
 
         channel.write(alloc);
     }
+
+    @Override
+    public void cacheDefined(String agentId, String cacheName)
+    {
+        byte[] agentIdBytes = utf8Bytes(agentId);
+        byte[] cacheNameBytes = utf8Bytes(cacheName);
+        ByteBuf alloc = channel.alloc(1 + wireLen(agentIdBytes) + wireLen(cacheNameBytes));
+
+        alloc.writeByte(4);
+        writeBytes(alloc, agentIdBytes);
+        writeBytes(alloc, cacheNameBytes);
+
+        channel.write(alloc);
+    }
 }

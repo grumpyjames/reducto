@@ -24,4 +24,8 @@ public interface TimeCacheServer {
         String agentName,
         String installationKlass,
         String errorMessage);
+
+    void cacheDefined(
+        String agentId,
+        String cacheName);
 }

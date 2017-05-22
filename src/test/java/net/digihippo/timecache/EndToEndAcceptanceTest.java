@@ -73,21 +73,28 @@ public class EndToEndAcceptanceTest
 
         latch.await();
 
-
-        final CountDownLatch latchTwo = new CountDownLatch(1);
-        timeCache
-            .defineCache("scoot", CacheDefinition.class.getName());
         Consumer<String> throwIt = (error) -> {
             throw new RuntimeException(error);
         };
+
+        final CountDownLatch latchTwo = new CountDownLatch(1);
+        timeCache
+            .defineCache(
+                "scoot",
+                CacheDefinition.class.getName(),
+                new DefinitionListener(throwIt, latchTwo::countDown));
+        latchTwo.await();
+
+        final CountDownLatch latchTwoPointTwo = new CountDownLatch(1);
+
         timeCache
             .load(
                 "scoot",
                 BEGINNING_OF_TIME,
                 BEGINNING_OF_TIME.plusMinutes(10),
-                new LoadListener(latchTwo::countDown, throwIt));
+                new LoadListener(latchTwoPointTwo::countDown, throwIt));
 
-        latchTwo.await();
+        latchTwoPointTwo.await();
 
         Consumer<Map<String, String>> throwItTwo = (error) -> {
             throw new RuntimeException(error.toString());
