@@ -90,6 +90,7 @@ public class EmbiggenableBuffer implements WriteBuffer
     public void putString(String s)
     {
         final byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+        putInt(bytes.length);
         putBytes(bytes);
     }
 

@@ -13,9 +13,7 @@ public class NamedEventSerializer implements Serializer<NamedEvent>
     public void encode(NamedEvent namedEvent, WriteBuffer bb)
     {
         bb.putLong(namedEvent.time.toEpochMilli());
-        byte[] bytes = namedEvent.name.getBytes(StandardCharsets.UTF_8);
-        bb.putInt(bytes.length);
-        bb.putBytes(bytes);
+        bb.putString(namedEvent.name);
     }
 
     @Override
