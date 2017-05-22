@@ -21,11 +21,10 @@ class AgentInvoker
 
     void dispatch(ByteBuf message)
     {
-        messageReader.readFrom(message);
-        messageReader.dispatchMessages(this::dispatchOnce);
+        messageReader.dispatch(message, this::invokeOne);
     }
 
-    private void dispatchOnce(final MessageReader messageReader) throws MessageReader.EndOfMessages
+    private void invokeOne(final MessageReader.Reader messageReader) throws MessageReader.EndOfMessages
     {
         byte methodIndex = messageReader.readByte();
         switch (methodIndex)

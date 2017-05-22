@@ -27,11 +27,10 @@ public class ClientToServerInvoker
 
     public void dispatch(ChannelHandlerContext ctx, ByteBuf msg)
     {
-        messageReader.readFrom(msg);
-        messageReader.dispatchMessages(new MessageReader.Invoker()
+        messageReader.dispatch(msg, new MessageReader.Invoker()
         {
             @Override
-            public void invokeOne(MessageReader messageReader) throws MessageReader.EndOfMessages
+            public void invokeOne(MessageReader.Reader messageReader) throws MessageReader.EndOfMessages
             {
                 byte methodIndex = messageReader.readByte();
                 switch (methodIndex)
@@ -88,9 +87,9 @@ public class ClientToServerInvoker
         });
     }
 
-    private ZonedDateTime readUtc(MessageReader messageReader) throws MessageReader.EndOfMessages
+    private ZonedDateTime readUtc(MessageReader.Reader reader) throws MessageReader.EndOfMessages
     {
-        return ZonedDateTime.ofInstant(Instant.ofEpochMilli(messageReader.readLong()), ZoneId.of("UTC"));
+        return ZonedDateTime.ofInstant(Instant.ofEpochMilli(reader.readLong()), ZoneId.of("UTC"));
     }
 
     private void writeSuccessResponse(

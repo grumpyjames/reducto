@@ -18,11 +18,10 @@ public class ServerInvoker
 
     public void dispatch(ByteBuf buffer)
     {
-        messageReader.readFrom(buffer);
-        messageReader.dispatchMessages(this::invokeOne);
+        messageReader.dispatch(buffer, this::invokeOne);
     }
 
-    private void invokeOne(MessageReader messageReader) throws MessageReader.EndOfMessages
+    private void invokeOne(MessageReader.Reader messageReader) throws MessageReader.EndOfMessages
     {
         byte methodIndex = messageReader.readByte();
         switch (methodIndex)
