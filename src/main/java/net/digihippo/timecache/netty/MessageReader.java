@@ -5,6 +5,7 @@ import io.netty.buffer.ByteBuf;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 class MessageReader
 {
@@ -54,6 +55,32 @@ class MessageReader
         result.flip();
 
         return Optional.of(result);
+    }
+
+    interface Invoker
+    {
+        void invokeOne(final MessageReader messageReader) throws EndOfMessages;
+    }
+
+    public void dispatchMessages(Invoker invoker)
+    {
+        flip();
+        try
+        {
+            while (hasBytes())
+            {
+                mark();
+                invoker.invokeOne(this);
+            }
+        }
+        catch (MessageReader.EndOfMessages endOfMessages)
+        {
+            incompleteRead();
+        }
+        finally
+        {
+            readComplete();
+        }
     }
 
     static final class EndOfMessages extends Exception {}

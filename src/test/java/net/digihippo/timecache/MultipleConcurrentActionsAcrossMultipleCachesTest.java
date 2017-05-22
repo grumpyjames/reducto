@@ -157,23 +157,28 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
             new InstallationListener(() -> {}, m -> Assert.fail("found installation errors: " + m.toString())));
 
         final List<NamedEvent> minuteResults = new ArrayList<>();
-        timeCache.<NamedEvent, List<NamedEvent>, Void>iterate(
+        timeCache.<List<NamedEvent>>iterate(
             "byMinute",
             start,
             end,
             Definitions.class.getName(),
             "default",
             Optional.empty(),
-            new IterationListener<>(minuteResults::addAll, Assert::fail));
+            new IterationListener(
+                (bb) -> minuteResults.addAll(new ListSerializer<>(new NamedEventSerializer()).decode(bb)),
+                Assert::fail));
 
         final List<NamedEvent> hourResults = new ArrayList<>();
-        timeCache.<NamedEvent, List<NamedEvent>, Void>iterate(
+        timeCache.<List<NamedEvent>>iterate(
             "byHour",
             start,
             end,
             Definitions.class.getName(),
             "default",
-            Optional.empty(), new IterationListener<>(hourResults::addAll, Assert::fail));
+            Optional.empty(),
+            new IterationListener(
+                (bb) -> hourResults.addAll(new ListSerializer<>(new NamedEventSerializer()).decode(bb)),
+                Assert::fail));
 
         // The one bucketness of the hour cache should allow it to complete...
         assertThat(minuteResults, empty());

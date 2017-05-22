@@ -5,6 +5,8 @@ import net.digihippo.timecache.netty.NettyTimeCacheAgent;
 import net.digihippo.timecache.netty.NettyTimeCacheServer;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -107,6 +109,10 @@ public class EndToEndAcceptanceTest
         latchThree.await();
 
         final CountDownLatch latchFour = new CountDownLatch(1);
+        final ByteBuffer filterBuffer = ByteBuffer.allocate(5);
+        filterBuffer.putInt(1);
+        filterBuffer.put("6".getBytes(StandardCharsets.UTF_8));
+        filterBuffer.flip();
 
         timeCache
             .iterate(
@@ -115,11 +121,12 @@ public class EndToEndAcceptanceTest
                 BEGINNING_OF_TIME.plusMinutes(8),
                 PlaybackDefinitions.class.getName(),
                 "default",
-                Optional.of("6"),
-                new IterationListener<>(o -> {
-                    List<NamedEvent> events = (List<NamedEvent>) o;
+                Optional.of(filterBuffer),
+                new IterationListener(o -> {
+                    List<NamedEvent> events =
+                        new ListSerializer<>(new NamedEventSerializer()).decode(o);
                     System.out.println("Found " + events.size() + " events");
-                    events.forEach(ne -> System.out.println(ne));
+                    events.forEach(System.out::println);
                     latchFour.countDown();
                 }, throwIt));
 

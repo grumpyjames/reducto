@@ -27,7 +27,7 @@ public class MissingCacheTest {
                 time.plusDays(1),
                 "unused",
                 "unused",
-            Optional.empty(), new IterationListener<>(
+            Optional.empty(), new IterationListener(
                         (o) -> fail(o.toString()), errors::add));
 
         assertThat(errors, contains("Cache 'nonexistent' not found"));

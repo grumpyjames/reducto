@@ -5,6 +5,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -120,15 +122,24 @@ public class ReloadAndPlaybackTest {
         ZonedDateTime to,
         Optional<String> filterArgs) {
         ArrayList<NamedEvent> result = new ArrayList<>();
-        timeCache.<NamedEvent, List<NamedEvent>, String>iterate(
+        Optional<ByteBuffer> maybeBuffer = filterArgs.map(f -> {
+            byte[] bytes = f.getBytes(StandardCharsets.UTF_8);
+            ByteBuffer buffer = ByteBuffer.allocate(bytes.length + 4);
+            buffer.putInt(bytes.length);
+            buffer.put(bytes);
+            buffer.flip();
+
+            return buffer;
+        });
+        timeCache.<List<NamedEvent>>iterate(
                 "historicalEvents",
                 from,
                 to,
                 PlaybackDefinitions.class.getName(),
                 "default",
-                filterArgs,
-                new IterationListener<>(
-                    result::addAll,
+                maybeBuffer,
+                new IterationListener(
+                    (bb) -> result.addAll(new ListSerializer<>(new NamedEventSerializer()).decode(bb)),
                     Assert::fail
                 ));
 

@@ -2,11 +2,12 @@ package net.digihippo.timecache;
 
 import net.digihippo.timecache.api.*;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
 import java.util.*;
 
-public class TimeCache implements TimeCacheServer, Stoppable
+public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheAdministration
 {
     private final Map<String, TimeCacheAgent> agents = new HashMap<>();
     private final Map<String, DefinitionStatus> definitionStatuses = new HashMap<>();
@@ -73,6 +74,7 @@ public class TimeCache implements TimeCacheServer, Stoppable
         }
     }
 
+    @Override
     public void installDefinitions(String name, InstallationListener installationListener)
     {
         Result<DefinitionSource, Exception> result = ClassLoading.loadAndCast(name, DefinitionSource.class);
@@ -139,10 +141,10 @@ public class TimeCache implements TimeCacheServer, Stoppable
             String installingClass,
             String definitionName,
             ReductionDefinition<T, U, F> reductionDefinition,
-            IterationListener<U> iterationListener,
+            IterationListener iterationListener,
             ZonedDateTime from,
             ZonedDateTime toExclusive,
-            Optional<F> filterArgs,
+            Optional<ByteBuffer> filterArgs,
             Collection<TimeCacheAgent> agents)
         {
 
@@ -158,23 +160,23 @@ public class TimeCache implements TimeCacheServer, Stoppable
                 ));
             for (TimeCacheAgent agent : agents)
             {
-                final Optional<ByteBuffer> wireFilterArgs = filterArgs
-                    .map(f ->
-                    {
-                        final EmbiggenableBuffer buffer = EmbiggenableBuffer.allocate(128);
-                        reductionDefinition.filterDefinition.filterSerializer.encode(f, buffer);
-                        return buffer.asReadableByteBuffer();
-                    });
+                filterArgs.ifPresent(Buffer::mark);
 
-
-                agent.iterate(
-                    definition.cacheName,
-                    newIterationKey,
-                    from,
-                    toExclusive,
-                    installingClass,
-                    definitionName,
-                    wireFilterArgs);
+                try
+                {
+                    agent.iterate(
+                        definition.cacheName,
+                        newIterationKey,
+                        from,
+                        toExclusive,
+                        installingClass,
+                        definitionName,
+                        filterArgs);
+                }
+                finally
+                {
+                    filterArgs.ifPresent(Buffer::reset);
+                }
             }
             iterationKey++;
         }
@@ -193,14 +195,14 @@ public class TimeCache implements TimeCacheServer, Stoppable
         private long requiredBuckets;
         private final U accumulator;
         private final ReductionDefinition<T, U, F> reductionDefinition;
-        private final IterationListener<U> iterationListener;
+        private final IterationListener iterationListener;
 
         private IterationStatus(
             long iterationKey,
             long requiredBuckets,
             U accumulator,
             ReductionDefinition<T, U, F> reductionDefinition,
-            IterationListener<U> iterationListener)
+            IterationListener iterationListener)
         {
             this.iterationKey = iterationKey;
             this.requiredBuckets = requiredBuckets;
@@ -217,7 +219,9 @@ public class TimeCache implements TimeCacheServer, Stoppable
 
             if (requiredBuckets == 0)
             {
-                iterationListener.onComplete.accept(accumulator);
+                EmbiggenableBuffer buffer = EmbiggenableBuffer.allocate(128);
+                reductionDefinition.serializer.encode(accumulator, buffer);
+                iterationListener.onComplete.accept(buffer.asReadableByteBuffer());
             }
         }
     }
@@ -261,25 +265,25 @@ public class TimeCache implements TimeCacheServer, Stoppable
         }
     }
 
-    public <T, U, F> void iterate(
+    @Override
+    public <U> void iterate(
         String cacheName,
         ZonedDateTime from,
         ZonedDateTime toExclusive,
         String definingClass,
         String iterateeName,
-        Optional<F> filterArguments,
-        IterationListener<U> iterationListener)
+        Optional<ByteBuffer> filterArguments,
+        IterationListener iterationListener)
     {
-        @SuppressWarnings("unchecked") DistributedCacheStatus<T> distributedCacheStatus =
-            (DistributedCacheStatus<T>) caches.get(cacheName);
+        DistributedCacheStatus distributedCacheStatus = caches.get(cacheName);
         if (distributedCacheStatus == null)
         {
             iterationListener.onFatalError.accept(String.format("Cache '%s' not found", cacheName));
             return;
         }
 
-        @SuppressWarnings("unchecked") final ReductionDefinition<T, U, F> reductionDefinition =
-            (ReductionDefinition<T, U, F>) definitions.get(definingClass).get(iterateeName);
+        final ReductionDefinition reductionDefinition =
+            definitions.get(definingClass).get(iterateeName);
 
         final long fromMillis = from.toInstant().toEpochMilli();
         final long toMillis = toExclusive.toInstant().toEpochMilli();
@@ -289,6 +293,7 @@ public class TimeCache implements TimeCacheServer, Stoppable
         final long requiredBucketCount =
             (lastBucketKey - firstBucketKey) / bucketMillis + (firstBucketKey == lastBucketKey ? 1 : 0);
 
+        //noinspection unchecked
         distributedCacheStatus.launchNewIteration(
             requiredBucketCount,
             definingClass,
@@ -358,6 +363,7 @@ public class TimeCache implements TimeCacheServer, Stoppable
         timeCacheEvents.onAgentConnected();
     }
 
+    @Override
     public void defineCache(
         String cacheName,
         String cacheComponentFactoryClass,

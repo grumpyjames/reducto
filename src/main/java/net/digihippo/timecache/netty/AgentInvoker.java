@@ -22,73 +22,57 @@ class AgentInvoker
     void dispatch(ByteBuf message)
     {
         messageReader.readFrom(message);
-        dispatchBuffer();
+        messageReader.dispatchMessages(this::dispatchOnce);
     }
 
-    private void dispatchBuffer()
+    private void dispatchOnce(final MessageReader messageReader) throws MessageReader.EndOfMessages
     {
-        messageReader.flip();
-        try
+        byte methodIndex = messageReader.readByte();
+        switch (methodIndex)
         {
-            while (messageReader.hasBytes())
+            case 0:
             {
-                messageReader.mark();
-                byte methodIndex = messageReader.readByte();
-                switch (methodIndex)
-                {
-                    case 0:
-                    {
-                        String className = messageReader.readString();
-                        timeCacheAgent.installDefinitions(className);
-                        break;
-                    }
-                    case 1:
-                    {
-                        String cacheName = messageReader.readString();
-                        long currentBucketStart = messageReader.readLong();
-                        long currentBucketEnd = messageReader.readLong();
-                        timeCacheAgent.populateBucket(cacheName, currentBucketStart, currentBucketEnd);
-                        break;
-                    }
-                    case 2:
-                    {
-                        String cacheName = messageReader.readString();
-                        long iterationKey = messageReader.readLong();
-                        long from = messageReader.readLong();
-                        long to = messageReader.readLong();
-                        String installingClass = messageReader.readString();
-                        String definitionName = messageReader.readString();
-                        Optional<ByteBuffer> filterArgs = messageReader.readOptionalByteBuffer();
-
-                        timeCacheAgent.iterate(
-                            cacheName,
-                            iterationKey,
-                            ZonedDateTime.ofInstant(Instant.ofEpochMilli(from), ZoneId.of("UTC")),
-                            ZonedDateTime.ofInstant(Instant.ofEpochMilli(to), ZoneId.of("UTC")),
-                            installingClass,
-                            definitionName,
-                            filterArgs);
-                        break;
-                    }
-                    case 3:
-                    {
-                        String cacheName = messageReader.readString();
-                        String cacheComponentFactoryClass = messageReader.readString();
-                        timeCacheAgent.defineCache(cacheName, cacheComponentFactoryClass);
-                        break;
-                    }
-                    default:
-                        throw new RuntimeException("Unknown method requested, index " + methodIndex);
-                }
+                String className = messageReader.readString();
+                timeCacheAgent.installDefinitions(className);
+                break;
             }
-        }
-        catch (MessageReader.EndOfMessages endOfMessages)
-        {
-            messageReader.incompleteRead();
-        }
-        finally
-        {
-            messageReader.readComplete();
+            case 1:
+            {
+                String cacheName = messageReader.readString();
+                long currentBucketStart = messageReader.readLong();
+                long currentBucketEnd = messageReader.readLong();
+                timeCacheAgent.populateBucket(cacheName, currentBucketStart, currentBucketEnd);
+                break;
+            }
+            case 2:
+            {
+                String cacheName = messageReader.readString();
+                long iterationKey = messageReader.readLong();
+                long from = messageReader.readLong();
+                long to = messageReader.readLong();
+                String installingClass = messageReader.readString();
+                String definitionName = messageReader.readString();
+                Optional<ByteBuffer> filterArgs = messageReader.readOptionalByteBuffer();
+
+                timeCacheAgent.iterate(
+                    cacheName,
+                    iterationKey,
+                    ZonedDateTime.ofInstant(Instant.ofEpochMilli(from), ZoneId.of("UTC")),
+                    ZonedDateTime.ofInstant(Instant.ofEpochMilli(to), ZoneId.of("UTC")),
+                    installingClass,
+                    definitionName,
+                    filterArgs);
+                break;
+            }
+            case 3:
+            {
+                String cacheName = messageReader.readString();
+                String cacheComponentFactoryClass = messageReader.readString();
+                timeCacheAgent.defineCache(cacheName, cacheComponentFactoryClass);
+                break;
+            }
+            default:
+                throw new RuntimeException("Unknown method requested, index " + methodIndex);
         }
     }
 }
