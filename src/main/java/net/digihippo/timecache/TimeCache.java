@@ -161,10 +161,9 @@ public class TimeCache implements TimeCacheServer, Stoppable
                 final Optional<ByteBuffer> wireFilterArgs = filterArgs
                     .map(f ->
                     {
-                        final ByteBuffer buffer = ByteBuffer.allocate(1024);
+                        final EmbiggenableBuffer buffer = EmbiggenableBuffer.allocate(128);
                         reductionDefinition.filterDefinition.filterSerializer.encode(f, buffer);
-                        buffer.flip();
-                        return buffer;
+                        return buffer.asReadableByteBuffer();
                     });
 
 

@@ -174,11 +174,11 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
                                 .forEach(
                                     item -> definition.reduceOne.accept(result, item));
 
-                            final ByteBuffer buffer = ByteBuffer.allocate(1024);
+                            final EmbiggenableBuffer buffer = EmbiggenableBuffer.allocate(128);
                             definition.serializer.encode(result, buffer);
-                            buffer.flip();
+                            ByteBuffer buf = buffer.asReadableByteBuffer();
 
-                            server.bucketComplete(agentId, cacheName, iterationKey, currentBucketKey, buffer);
+                            server.bucketComplete(agentId, cacheName, iterationKey, currentBucketKey, buf);
                         });
                 bucketKey += bucketSize;
             }

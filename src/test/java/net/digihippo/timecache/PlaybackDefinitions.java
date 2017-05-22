@@ -1,9 +1,6 @@
 package net.digihippo.timecache;
 
-import net.digihippo.timecache.api.DefinitionSource;
-import net.digihippo.timecache.api.FilterDefinition;
-import net.digihippo.timecache.api.ReductionDefinition;
-import net.digihippo.timecache.api.Serializer;
+import net.digihippo.timecache.api.*;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -29,11 +26,11 @@ public class PlaybackDefinitions implements DefinitionSource
                     new Serializer<String>()
                     {
                         @Override
-                        public void encode(String s, ByteBuffer bb)
+                        public void encode(String s, WriteBuffer bb)
                         {
                             final byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
                             bb.putInt(bytes.length);
-                            bb.put(bytes);
+                            bb.putBytes(bytes);
                         }
 
                         @Override

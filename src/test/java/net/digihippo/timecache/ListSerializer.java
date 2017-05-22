@@ -1,6 +1,7 @@
 package net.digihippo.timecache;
 
 import net.digihippo.timecache.api.Serializer;
+import net.digihippo.timecache.api.WriteBuffer;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -16,7 +17,7 @@ class ListSerializer<T> implements Serializer<List<T>>
     }
 
     @Override
-    public void encode(List<T> namedEvents, ByteBuffer bb)
+    public void encode(List<T> namedEvents, WriteBuffer bb)
     {
         bb.putInt(namedEvents.size());
         for (T t : namedEvents)

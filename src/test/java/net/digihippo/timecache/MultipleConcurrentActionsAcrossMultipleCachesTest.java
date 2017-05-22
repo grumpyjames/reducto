@@ -48,7 +48,7 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
                         new Serializer<Void>()
                         {
                             @Override
-                            public void encode(Void aVoid, ByteBuffer bb)
+                            public void encode(Void aVoid, WriteBuffer bb)
                             {
 
                             }

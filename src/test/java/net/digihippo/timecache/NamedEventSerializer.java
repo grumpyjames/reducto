@@ -1,6 +1,7 @@
 package net.digihippo.timecache;
 
 import net.digihippo.timecache.api.Serializer;
+import net.digihippo.timecache.api.WriteBuffer;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -9,12 +10,12 @@ import java.time.Instant;
 public class NamedEventSerializer implements Serializer<NamedEvent>
 {
     @Override
-    public void encode(NamedEvent namedEvent, ByteBuffer bb)
+    public void encode(NamedEvent namedEvent, WriteBuffer bb)
     {
         bb.putLong(namedEvent.time.toEpochMilli());
         byte[] bytes = namedEvent.name.getBytes(StandardCharsets.UTF_8);
         bb.putInt(bytes.length);
-        bb.put(bytes);
+        bb.putBytes(bytes);
     }
 
     @Override
