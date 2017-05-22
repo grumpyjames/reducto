@@ -23,25 +23,24 @@ public class NettyTimeCacheServer
     {
         TimeCache timeCache = new TimeCache(timeCacheEvents);
 
-        EventLoopGroup bossGroup = new NioEventLoopGroup(1); // (1)
+        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup(1);
 
-        ServerBootstrap b = new ServerBootstrap(); // (2)
+        ServerBootstrap b = new ServerBootstrap();
         b.group(bossGroup, workerGroup)
-            .channel(NioServerSocketChannel.class) // (3)
+            .channel(NioServerSocketChannel.class)
             .childHandler(new ChannelInitializer<SocketChannel>()
-            { // (4)
+            {
                 @Override
                 public void initChannel(SocketChannel ch) throws Exception
                 {
                     ch.pipeline().addLast(new TimecacheServerHandler(timeCache));
                 }
             })
-            .option(ChannelOption.SO_BACKLOG, 128)          // (5)
-            .childOption(ChannelOption.SO_KEEPALIVE, true); // (6)
+            .option(ChannelOption.SO_BACKLOG, 128)
+            .childOption(ChannelOption.SO_KEEPALIVE, true);
 
-        // Bind and start to accept incoming connections.
-        ChannelFuture f = b.bind(port).sync(); // (7)
+        ChannelFuture f = b.bind(port).sync();
         timeCache.addShutdownHook(() -> {
             f.channel().close();
             workerGroup.shutdownGracefully();

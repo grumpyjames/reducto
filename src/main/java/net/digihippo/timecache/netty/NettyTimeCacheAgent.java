@@ -26,10 +26,10 @@ public class NettyTimeCacheAgent
     {
         EventLoopGroup workerGroup = new NioEventLoopGroup(1);
         try {
-            Bootstrap b = new Bootstrap(); // (1)
-            b.group(workerGroup); // (2)
-            b.channel(NioSocketChannel.class); // (3)
-            b.option(ChannelOption.SO_KEEPALIVE, true); // (4)
+            Bootstrap b = new Bootstrap();
+            b.group(workerGroup);
+            b.channel(NioSocketChannel.class);
+            b.option(ChannelOption.SO_KEEPALIVE, true);
             b.handler(new ChannelInitializer<SocketChannel>() {
                 @Override
                 public void initChannel(SocketChannel ch) throws Exception {
@@ -38,8 +38,7 @@ public class NettyTimeCacheAgent
                 }
             });
 
-            // Start the client.
-            ChannelFuture f = b.connect(serverHost, serverPort).sync(); // (5)
+            ChannelFuture f = b.connect(serverHost, serverPort).sync();
 
             // Wait until the connection is closed.
             f.channel().closeFuture().sync();
