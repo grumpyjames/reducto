@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
 import java.util.*;
 
-public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheAdministration
+public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheActions
 {
     private final Map<String, TimeCacheAgent> agents = new HashMap<>();
     private final Map<String, DefinitionStatus> definitionStatuses = new HashMap<>();
@@ -226,7 +226,8 @@ public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheAdministr
         }
     }
 
-    void load(
+    @Override
+    public void load(
         String cacheName,
         ZonedDateTime fromInclusive,
         ZonedDateTime toExclusive,

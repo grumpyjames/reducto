@@ -5,8 +5,8 @@ import java.util.function.Consumer;
 
 public final class InstallationListener
 {
-    final Runnable onComplete;
-    final Consumer<Map<String, String>> onError;
+    public final Runnable onComplete;
+    public final Consumer<Map<String, String>> onError;
 
     public InstallationListener(
         Runnable onComplete,

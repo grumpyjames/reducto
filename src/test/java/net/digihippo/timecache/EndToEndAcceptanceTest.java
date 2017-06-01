@@ -2,6 +2,7 @@ package net.digihippo.timecache;
 
 import net.digihippo.timecache.api.CacheComponentsFactory;
 import net.digihippo.timecache.netty.NettyTimeCacheAgent;
+import net.digihippo.timecache.netty.NettyTimeCacheClient;
 import net.digihippo.timecache.netty.NettyTimeCacheServer;
 import org.junit.Test;
 
@@ -18,6 +19,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.assertThat;
 
 public class EndToEndAcceptanceTest
 {
@@ -75,12 +79,14 @@ public class EndToEndAcceptanceTest
 
         latch.await();
 
+        TimeCacheActions actions = NettyTimeCacheClient.connect("localhost", 9192);
+
         Consumer<String> throwIt = (error) -> {
             throw new RuntimeException(error);
         };
 
         final CountDownLatch latchTwo = new CountDownLatch(1);
-        timeCache
+        actions
             .defineCache(
                 "scoot",
                 CacheDefinition.class.getName(),
@@ -89,7 +95,7 @@ public class EndToEndAcceptanceTest
 
         final CountDownLatch latchTwoPointTwo = new CountDownLatch(1);
 
-        timeCache
+        actions
             .load(
                 "scoot",
                 BEGINNING_OF_TIME,
@@ -102,7 +108,7 @@ public class EndToEndAcceptanceTest
             throw new RuntimeException(error.toString());
         };
         final CountDownLatch latchThree = new CountDownLatch(1);
-        timeCache.installDefinitions(
+        actions.installDefinitions(
             PlaybackDefinitions.class.getName(),
             new InstallationListener(latchThree::countDown, throwItTwo));
 
@@ -114,7 +120,7 @@ public class EndToEndAcceptanceTest
         filterBuffer.put("6".getBytes(StandardCharsets.UTF_8));
         filterBuffer.flip();
 
-        timeCache
+        actions
             .iterate(
                 "scoot",
                 BEGINNING_OF_TIME.plusSeconds(7),
@@ -125,6 +131,7 @@ public class EndToEndAcceptanceTest
                 new IterationListener(o -> {
                     List<NamedEvent> events =
                         new ListSerializer<>(new NamedEventSerializer()).decode(o);
+                    assertThat(events.size(), equalTo(381));
                     System.out.println("Found " + events.size() + " events");
                     events.forEach(System.out::println);
                     latchFour.countDown();

@@ -4,9 +4,11 @@ import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
 import java.util.Optional;
 
-public interface TimeCacheAdministration
+public interface TimeCacheActions
 {
-    void installDefinitions(String name, InstallationListener installationListener);
+    void installDefinitions(
+        String name,
+        InstallationListener installationListener);
 
     void iterate(
         String cacheName,
@@ -21,4 +23,10 @@ public interface TimeCacheAdministration
         String cacheName,
         String cacheComponentFactoryClass,
         DefinitionListener definitionListener);
+
+    void load(
+        String cacheName,
+        ZonedDateTime fromInclusive,
+        ZonedDateTime toExclusive,
+        LoadListener loadListener);
 }

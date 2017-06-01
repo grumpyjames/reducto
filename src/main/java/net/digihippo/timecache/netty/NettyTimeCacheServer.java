@@ -7,7 +7,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import net.digihippo.timecache.TimeCache;
-import net.digihippo.timecache.TimeCacheAdministration;
+import net.digihippo.timecache.TimeCacheActions;
 import net.digihippo.timecache.TimeCacheEvents;
 
 import java.net.InetSocketAddress;
@@ -72,13 +72,13 @@ public class NettyTimeCacheServer
     private static final class TimecacheClientServerHandler
         extends ChannelInboundHandlerAdapter
     {
-        private final TimeCacheAdministration timeCacheAdministration;
+        private final TimeCacheActions timeCacheActions;
         private final ClientToServerInvoker invoker;
 
-        public TimecacheClientServerHandler(TimeCacheAdministration timeCacheAdministration)
+        public TimecacheClientServerHandler(TimeCacheActions timeCacheActions)
         {
-            this.timeCacheAdministration = timeCacheAdministration;
-            this.invoker = new ClientToServerInvoker(timeCacheAdministration);
+            this.timeCacheActions = timeCacheActions;
+            this.invoker = new ClientToServerInvoker(timeCacheActions);
         }
 
         @Override

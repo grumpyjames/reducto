@@ -4,8 +4,8 @@ import java.util.function.Consumer;
 
 public class DefinitionListener
 {
-    final Consumer<String> onError;
-    final Runnable onSuccess;
+    public final Consumer<String> onError;
+    public final Runnable onSuccess;
 
     public DefinitionListener(Consumer<String> onError, Runnable onSuccess)
     {

@@ -85,6 +85,7 @@ class MessageReader
             result.put(byteBuffer.array(), byteBuffer.position(), length);
             result.position(length);
             result.flip();
+            byteBuffer.position(byteBuffer.position() + length);
 
             return Optional.of(result);
         }
@@ -153,7 +154,7 @@ class MessageReader
             if (available > byteBuffer.remaining())
             {
                 byteBuffer.flip();
-                final ByteBuffer newBuffer = ByteBuffer.allocate(byteBuffer.position() + available);
+                final ByteBuffer newBuffer = ByteBuffer.allocate(byteBuffer.remaining() + available);
                 newBuffer.put(byteBuffer);
                 byteBuffer = newBuffer;
             }

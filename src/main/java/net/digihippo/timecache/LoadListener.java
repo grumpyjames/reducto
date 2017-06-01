@@ -4,8 +4,8 @@ import java.util.function.Consumer;
 
 public final class LoadListener
 {
-    final Runnable onComplete;
-    final Consumer<String> onFatalError;
+    public final Runnable onComplete;
+    public final Consumer<String> onFatalError;
 
     public LoadListener(
         Runnable onComplete,

@@ -11,7 +11,7 @@ import static org.junit.Assert.assertThat;
 
 public class GoodErrorMessagesTest
 {
-    private final TimeCacheAdministration timeCache = new TimeCache(TimeCacheEvents.NO_OP);
+    private final TimeCacheActions timeCache = new TimeCache(TimeCacheEvents.NO_OP);
 
     @Test
     public void missingCacheFactoryClassOnServer()

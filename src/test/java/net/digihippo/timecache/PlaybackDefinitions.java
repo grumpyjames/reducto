@@ -4,8 +4,10 @@ import net.digihippo.timecache.api.*;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.function.Function;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 
 @SuppressWarnings("WeakerAccess") // loaded reflectively
