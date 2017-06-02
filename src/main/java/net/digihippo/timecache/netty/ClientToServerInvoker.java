@@ -11,13 +11,13 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Optional;
 
-public class ClientToServerInvoker
+class ClientToServerInvoker
 {
     private final MessageReader messageReader = new MessageReader();
 
     private final TimeCacheActions timeCacheActions;
 
-    public ClientToServerInvoker(TimeCacheActions timeCacheActions)
+    ClientToServerInvoker(TimeCacheActions timeCacheActions)
     {
         this.timeCacheActions = timeCacheActions;
     }
@@ -42,7 +42,7 @@ public class ClientToServerInvoker
                         definitionName,
                         new InstallationListener(
                             () -> writeSuccessResponse(ctx, correlationId),
-                            (errs) -> writeErrorResponse(ctx, correlationId, errs.toString())
+                            (errs) -> writeErrorResponse(ctx, correlationId, errs)
                         ));
                     break;
                 }
@@ -76,8 +76,8 @@ public class ClientToServerInvoker
                         definitionsName,
                         cacheComponentsFactoryClass,
                         new DefinitionListener(
-                            (e) -> writeErrorResponse(ctx, correlationId, e),
-                            () -> writeSuccessResponse(ctx, correlationId)));
+                            () -> writeSuccessResponse(ctx, correlationId), (e) -> writeErrorResponse(ctx, correlationId, e)
+                        ));
                     break;
                 }
                 case 3:

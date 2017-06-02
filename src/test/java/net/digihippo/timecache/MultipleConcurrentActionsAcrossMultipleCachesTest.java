@@ -107,12 +107,12 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
         timeCache.defineCache(
             "byMinute",
             MinuteCacheFactory.class.getName(),
-            new DefinitionListener((e) -> { throw new RuntimeException(e); }, () -> {}));
+            new DefinitionListener(() -> {}, (e) -> { throw new RuntimeException(e); }));
 
         timeCache.defineCache(
             "byHour",
             HourCacheFactory.class.getName(),
-            new DefinitionListener((e) -> { throw new RuntimeException(e); }, () -> {}));
+            new DefinitionListener(() -> {}, (e) -> { throw new RuntimeException(e); }));
     }
 
     @Test
@@ -154,7 +154,7 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
 
         timeCache.installDefinitions(
             Definitions.class.getName(),
-            new InstallationListener(() -> {}, m -> Assert.fail("found installation errors: " + m.toString())));
+            new InstallationListener(() -> {}, m -> Assert.fail("found installation errors: " + m)));
 
         final List<NamedEvent> minuteResults = new ArrayList<>();
         timeCache.iterate(

@@ -89,7 +89,7 @@ public class EndToEndAcceptanceTest
             .defineCache(
                 "scoot",
                 CacheDefinition.class.getName(),
-                new DefinitionListener(throwIt, latchTwo::countDown));
+                new DefinitionListener(latchTwo::countDown, throwIt));
         latchTwo.await();
 
         final CountDownLatch latchTwoPointTwo = new CountDownLatch(1);

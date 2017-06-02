@@ -20,7 +20,7 @@ public class GoodErrorMessagesTest
         timeCache.defineCache(
             "moose",
             "com.example.NonExistent",
-            new DefinitionListener(errors::add, Assert::fail));
+            new DefinitionListener(Assert::fail, errors::add));
 
         assertThat(errors,
             containsInAnyOrder("Unable to define cache 'moose'," +

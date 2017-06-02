@@ -51,11 +51,11 @@ public class ReloadAndPlaybackTest {
         timeCache.defineCache(
             "historicalEvents",
             MinuteCacheFactory.class.getName(),
-            new DefinitionListener((e) -> { throw new RuntimeException(e); }, () -> {}));
+            new DefinitionListener(() -> {}, (e) -> { throw new RuntimeException(e); }));
 
         timeCache.installDefinitions(
             PlaybackDefinitions.class.getName(),
-            new InstallationListener(() -> {}, m -> Assert.fail("found installation errors: " + m.toString())));
+            new InstallationListener(() -> {}, m -> Assert.fail("found installation errors: " + m)));
     }
 
     @Test
