@@ -26,33 +26,33 @@ public class LoadDefinitionsTest {
     @Test
     public void failureToLoadOnASingleAgentIsALoadFailure()
     {
-        final Map<String, String> errors = new HashMap<>();
+        final List<String> errors = new ArrayList<>();
         timeCache.installDefinitions(
             PlaybackDefinitions.class.getName(),
             new InstallationListener(
-                () -> Assert.fail("should fail to install"), errors::putAll));
+                () -> Assert.fail("should fail to install"), errors::add));
 
         timeCache.installationComplete("agentOne", PlaybackDefinitions.class.getName());
         timeCache.installationError("agentTwo", PlaybackDefinitions.class.getName(), "oops");
         timeCache.installationError("agentThree", PlaybackDefinitions.class.getName(), "moo");
 
         assertThat(errors,
-            allOf(hasEntry("agentTwo", "oops"), hasEntry("agentThree", "moo")));
+            hasItem(allOf(containsString("agentTwo: oops"), containsString("agentThree: moo"))));
     }
 
     @Test
     public void failureIsOnlyReportedOnceEveryAgentHasCheckedIn()
     {
-        final Map<String, String> errors = new HashMap<>();
+        final List<String> errors = new ArrayList<>();
         timeCache.installDefinitions(
             PlaybackDefinitions.class.getName(),
             new InstallationListener(
-                () -> Assert.fail("should fail to install"), errors::putAll));
+                () -> Assert.fail("should fail to install"), errors::add));
 
         timeCache.installationComplete("agentOne", PlaybackDefinitions.class.getName());
         timeCache.installationError("agentTwo", PlaybackDefinitions.class.getName(), "oops");
 
-        assertThat(errors.entrySet(), is(empty()));
+        assertThat(errors, is(empty()));
 
         timeCache.installationComplete("agentThree", PlaybackDefinitions.class.getName());
     }
@@ -64,7 +64,7 @@ public class LoadDefinitionsTest {
         timeCache.installDefinitions(
             PlaybackDefinitions.class.getName(),
             new InstallationListener(
-                () -> success.add("woot"), (m -> Assert.fail(m.toString()))));
+                () -> success.add("woot"), (Assert::fail)));
 
         timeCache.installationComplete("agentOne", PlaybackDefinitions.class.getName());
         timeCache.installationComplete("agentTwo", PlaybackDefinitions.class.getName());

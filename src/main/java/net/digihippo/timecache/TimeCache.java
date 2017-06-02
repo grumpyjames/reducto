@@ -68,9 +68,19 @@ public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheActions
                 }
                 else
                 {
-                    listener.onError.accept(errors);
+                    listener.onError.accept(errorMessage(errors));
                 }
             }
+        }
+
+        private String errorMessage(Map<String, String> errors)
+        {
+            final StringBuilder result = new StringBuilder("Installation failed due to: ");
+            for (Map.Entry<String, String> errorByAgent : errors.entrySet())
+            {
+                result.append(errorByAgent.getKey()).append(": ").append(errorByAgent.getValue()).append("\n");
+            }
+            return result.toString();
         }
     }
 
@@ -415,7 +425,7 @@ public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheActions
             this.waitingFor = waitingFor;
         }
 
-        public void agentDefinitionComplete(String agentId)
+        void agentDefinitionComplete(String agentId)
         {
             waitingFor.remove(agentId);
             if (waitingFor.isEmpty())
@@ -430,8 +440,8 @@ public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheActions
                             cacheComponents.eventLoader,
                             cacheComponents.millitimeExtractor,
                             cacheComponents.bucketSize),
-                        new HashSet<Long>(),
-                        new HashMap<Long, Set<String>>()
+                        new HashSet<>(),
+                        new HashMap<>()
                     ));
                 definitionListener.onSuccess.run();
             }

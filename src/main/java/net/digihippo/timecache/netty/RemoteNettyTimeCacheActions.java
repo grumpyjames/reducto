@@ -52,10 +52,7 @@ class RemoteNettyTimeCacheActions implements TimeCacheActions
             else
             {
                 String errorMessage = reader.readString();
-                // FIXME: this isn't a useful error type
-                HashMap<String, String> stringStringHashMap = new HashMap<>();
-                stringStringHashMap.put(errorMessage, errorMessage);
-                installationListener.onError.accept(stringStringHashMap);
+                installationListener.onError.accept(errorMessage);
             }
             inflight.remove(correlationId);
         });

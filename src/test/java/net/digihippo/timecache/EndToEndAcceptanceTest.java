@@ -12,7 +12,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -104,13 +103,10 @@ public class EndToEndAcceptanceTest
 
         latchTwoPointTwo.await();
 
-        Consumer<Map<String, String>> throwItTwo = (error) -> {
-            throw new RuntimeException(error.toString());
-        };
         final CountDownLatch latchThree = new CountDownLatch(1);
         actions.installDefinitions(
             PlaybackDefinitions.class.getName(),
-            new InstallationListener(latchThree::countDown, throwItTwo));
+            new InstallationListener(latchThree::countDown, throwIt));
 
         latchThree.await();
 
