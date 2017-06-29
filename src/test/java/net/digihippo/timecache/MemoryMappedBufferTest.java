@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 
+import static org.junit.Assert.assertEquals;
+
 public class MemoryMappedBufferTest
 {
     @Rule
@@ -23,6 +25,16 @@ public class MemoryMappedBufferTest
         final File file = folder.newFile("bucket");
 
         MemoryMappedBuffer rw = new MemoryMappedBuffer(new RandomAccessFile(file, "rw"));
+
+        Thingy t = new Thingy("boo", 235323, "nfjnsdf sdfsdfs");
+
+        ThingySerializer sz = new ThingySerializer();
+        sz.encode(t, rw);
+
+        rw.flip();
+        Thingy roundTripped = sz.decode(rw);
+
+        assertEquals(roundTripped, t);
     }
 
     private static class ThingySerializer implements Serializer<Thingy>
@@ -38,7 +50,10 @@ public class MemoryMappedBufferTest
         @Override
         public Thingy decode(ReadBuffer bb)
         {
-            return null;
+            String one = bb.readString();
+            int two = bb.readInt();
+            String three = bb.readString();
+            return new Thingy(one, two, three);
         }
     }
 
@@ -53,6 +68,39 @@ public class MemoryMappedBufferTest
             this.one = one;
             this.two = two;
             this.three = three;
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            Thingy thingy = (Thingy) o;
+
+            if (two != thingy.two) return false;
+            if (one != null ? !one.equals(thingy.one) : thingy.one != null) return false;
+            return !(three != null ? !three.equals(thingy.three) : thingy.three != null);
+
+        }
+
+        @Override
+        public int hashCode()
+        {
+            int result = one != null ? one.hashCode() : 0;
+            result = 31 * result + two;
+            result = 31 * result + (three != null ? three.hashCode() : 0);
+            return result;
+        }
+
+        @Override
+        public String toString()
+        {
+            return "Thingy{" +
+                "one='" + one + '\'' +
+                ", two=" + two +
+                ", three='" + three + '\'' +
+                '}';
         }
     }
 
@@ -284,6 +332,17 @@ public class MemoryMappedBufferTest
             try
             {
                 return randomAccessFile.length();
+            } catch (IOException e)
+            {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public void flip()
+        {
+            try
+            {
+                randomAccessFile.seek(0L);
             } catch (IOException e)
             {
                 throw new RuntimeException(e);
