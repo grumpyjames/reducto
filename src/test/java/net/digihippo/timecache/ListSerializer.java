@@ -1,5 +1,6 @@
 package net.digihippo.timecache;
 
+import net.digihippo.timecache.api.ReadBuffer;
 import net.digihippo.timecache.api.Serializer;
 import net.digihippo.timecache.api.WriteBuffer;
 
@@ -27,9 +28,9 @@ class ListSerializer<T> implements Serializer<List<T>>
     }
 
     @Override
-    public List<T> decode(ByteBuffer bb)
+    public List<T> decode(ReadBuffer bb)
     {
-        int size = bb.getInt();
+        int size = bb.readInt();
         final List<T> events = new ArrayList<>(size);
         for (int i = 0; i < size; i++)
         {

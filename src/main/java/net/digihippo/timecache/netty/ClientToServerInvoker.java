@@ -3,6 +3,7 @@ package net.digihippo.timecache.netty;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import net.digihippo.timecache.*;
+import net.digihippo.timecache.api.ReadBuffer;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -111,13 +112,14 @@ class ClientToServerInvoker
     private void writeSuccessResponse(
         ChannelHandlerContext ctx,
         long correlationId,
-        ByteBuffer byteBuffer)
+        ReadBuffer byteBuffer)
     {
-        ByteBuf buffer = ctx.alloc().buffer(8 + 4 + 4 + byteBuffer.remaining());
+        int size = (int) byteBuffer.size();
+        ByteBuf buffer = ctx.alloc().buffer(8 + 4 + 4 + size);
         buffer.writeLong(correlationId);
         buffer.writeInt(1);
-        buffer.writeInt(byteBuffer.remaining());
-        buffer.writeBytes(byteBuffer);
+        buffer.writeInt(size);
+        buffer.writeBytes(byteBuffer.readBytes(size));
 
         ctx.writeAndFlush(buffer);
     }

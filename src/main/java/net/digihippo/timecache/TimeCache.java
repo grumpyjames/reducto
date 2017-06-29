@@ -223,7 +223,7 @@ public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheActions
 
         void bucketComplete(String agentId, long currentBucketKey, ByteBuffer result)
         {
-            final U u = reductionDefinition.serializer.decode(result);
+            final U u = reductionDefinition.serializer.decode(new ReadableByteBuffer(result));
             reductionDefinition.reduceMany.accept(this.accumulator, u);
             requiredBuckets--;
 
@@ -231,7 +231,7 @@ public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheActions
             {
                 EmbiggenableBuffer buffer = EmbiggenableBuffer.allocate(128);
                 reductionDefinition.serializer.encode(accumulator, buffer);
-                iterationListener.onComplete.accept(buffer.asReadableByteBuffer());
+                iterationListener.onComplete.accept(new ReadableByteBuffer(buffer.asReadableByteBuffer()));
             }
         }
     }

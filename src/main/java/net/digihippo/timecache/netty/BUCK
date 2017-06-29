@@ -3,6 +3,7 @@ java_library(
   srcs = glob(["*.java"]),
   deps = [
     "//src/main/java/net/digihippo/timecache:timecache",
+    "//src/main/java/net/digihippo/timecache/api:api",
     "//lib:netty",
   ],
   visibility = ["PUBLIC"],

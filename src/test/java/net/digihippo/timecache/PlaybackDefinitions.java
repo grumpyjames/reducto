@@ -2,7 +2,6 @@ package net.digihippo.timecache;
 
 import net.digihippo.timecache.api.*;
 
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,12 +35,9 @@ public class PlaybackDefinitions implements DefinitionSource
                         }
 
                         @Override
-                        public String decode(ByteBuffer bb)
+                        public String decode(ReadBuffer bb)
                         {
-                            final int length = bb.getInt();
-                            final byte[] body = new byte[length];
-                            bb.get(body, 0, length);
-                            return new String(body, StandardCharsets.UTF_8);
+                            return bb.readString();
                         }
                     },
                     s ->

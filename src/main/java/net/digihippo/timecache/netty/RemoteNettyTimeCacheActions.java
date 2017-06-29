@@ -86,7 +86,7 @@ class RemoteNettyTimeCacheActions implements TimeCacheActions
                 ByteBuffer byteBuffer = ByteBuffer.allocate(resultSize);
                 reader.readBytes(resultSize, byteBuffer);
                 byteBuffer.flip();
-                iterationListener.onComplete.accept(byteBuffer);
+                iterationListener.onComplete.accept(new ReadableByteBuffer(byteBuffer));
             }
             else
             {

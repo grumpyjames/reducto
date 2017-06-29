@@ -54,7 +54,7 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
                             }
 
                             @Override
-                            public Void decode(ByteBuffer bb)
+                            public Void decode(ReadBuffer bb)
                             {
                                 return null;
                             }

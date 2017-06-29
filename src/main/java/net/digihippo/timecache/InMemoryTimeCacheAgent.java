@@ -2,6 +2,7 @@ package net.digihippo.timecache;
 
 import net.digihippo.timecache.api.CacheComponentsFactory;
 import net.digihippo.timecache.api.DefinitionSource;
+import net.digihippo.timecache.api.ReadBuffer;
 import net.digihippo.timecache.api.ReductionDefinition;
 
 import java.nio.ByteBuffer;
@@ -77,7 +78,9 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
             definitions.get(installerName).get(definitionName);
         @SuppressWarnings("unchecked") final Predicate predicate =
             (Predicate) definition.filterDefinition.predicateLoader.apply(
-                wireFilterArgs.map((Function<ByteBuffer, Object>) definition.filterDefinition.filterSerializer::decode));
+                wireFilterArgs
+                    .map(ReadableByteBuffer::new)
+                    .map((Function<ReadBuffer, Object>) definition.filterDefinition.filterSerializer::decode));
 
 
         Cache cache = caches.get(cacheName);
