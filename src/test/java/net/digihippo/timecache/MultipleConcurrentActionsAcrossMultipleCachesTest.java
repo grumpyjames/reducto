@@ -3,8 +3,11 @@ package net.digihippo.timecache;
 import net.digihippo.timecache.api.*;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -16,6 +19,9 @@ import static org.hamcrest.Matchers.empty;
 import static org.junit.Assert.*;
 
 public class MultipleConcurrentActionsAcrossMultipleCachesTest {
+    @Rule
+    public TemporaryFolder folder = new TemporaryFolder();
+
     private static final ZonedDateTime BEGINNING_OF_TIME =
             ZonedDateTime.of(2016, 11, 1, 0, 0, 0, 0, ZoneId.of("UTC"));
     private static final List<NamedEvent> ALL_EVENTS = createEvents(BEGINNING_OF_TIME);
@@ -94,15 +100,14 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
     }
 
     @Before
-    public void setup()
+    public void setup() throws IOException
     {
         BlockableServer agentOneToServerLink = new BlockableServer(timeCache);
         timeCache.addAgent(
-            "agentOne", new InMemoryTimeCacheAgent("agentOne", agentOneToServerLink));
+            "agentOne", new InMemoryTimeCacheAgent(folder.newFolder("one"), "agentOne", agentOneToServerLink));
         agentTwoToServerLink = new BlockableServer(timeCache);
         timeCache.addAgent(
-            "agentTwo", new InMemoryTimeCacheAgent("agentTwo", agentTwoToServerLink));
-
+            "agentTwo", new InMemoryTimeCacheAgent(folder.newFolder("two"), "agentTwo", agentTwoToServerLink));
 
         timeCache.defineCache(
             "byMinute",

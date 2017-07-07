@@ -1,10 +1,10 @@
 package net.digihippo.timecache;
 
-import net.digihippo.timecache.api.CacheComponentsFactory;
-import net.digihippo.timecache.api.DefinitionSource;
-import net.digihippo.timecache.api.ReadBuffer;
-import net.digihippo.timecache.api.ReductionDefinition;
+import net.digihippo.timecache.api.*;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -12,17 +12,22 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 public class InMemoryTimeCacheAgent implements TimeCacheAgent
 {
+    private final File rootDir;
     private final String agentId;
     private final TimeCacheServer timeCacheServer;
     private final Map<String, Cache<?>> caches = new HashMap<>();
 
     public InMemoryTimeCacheAgent(
+        File rootDir,
         String agentId,
         TimeCacheServer timeCacheServer)
     {
+        this.rootDir = rootDir;
         this.agentId = agentId;
         this.timeCacheServer = timeCacheServer;
     }
@@ -109,15 +114,21 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
         result.consume(
             ccf -> {
                 CacheComponentsFactory.CacheComponents cacheComponents = ccf.createCacheComponents();
+                final File cacheDirectory = new File(rootDir, cacheName);
+                if (!cacheDirectory.mkdir())
+                {
+                    throw new RuntimeException("Unable to create file: " + cacheDirectory.getAbsolutePath());
+                }
                 @SuppressWarnings("unchecked") final CacheDefinition definition =
                     new CacheDefinition(
                         cacheName,
                         cacheComponents.cacheClass,
                         cacheComponents.eventLoader,
                         cacheComponents.millitimeExtractor,
-                        cacheComponents.bucketSize);
+                        cacheComponents.bucketSize,
+                        cacheComponents.serializer);
                 //noinspection unchecked
-                caches.put(cacheName, new Cache(definition, cacheComponents.bucketSize.toMillis(1L)));
+                caches.put(cacheName, new Cache(definition, cacheDirectory, cacheComponents.bucketSize.toMillis(1L)));
                 timeCacheServer.cacheDefined(agentId, cacheName);
             },
             exc -> {
@@ -129,22 +140,44 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
     private static class Cache<T>
     {
         private final CacheDefinition<T> cacheDefinition;
+        private final File cacheDirectory;
         private final long bucketSize;
-        private final Map<Long, List<T>> buckets = new HashMap<>();
+        private final Map<Long, Bucket<T>> buckets = new HashMap<>();
 
         Cache(
-                CacheDefinition<T> cacheDefinition,
-                long bucketSizeMillis)
+            CacheDefinition<T> cacheDefinition,
+            File cacheDirectory,
+            long bucketSizeMillis)
         {
             this.cacheDefinition = cacheDefinition;
+            this.cacheDirectory = cacheDirectory;
             this.bucketSize = bucketSizeMillis;
         }
 
         Consumer<T> newBucket(long bucketStart)
         {
-            List list = buckets.computeIfAbsent(bucketStart, bs -> new ArrayList());
+            Bucket<T> bucket = buckets.computeIfAbsent(
+                bucketStart,
+                bs -> createBucket(cacheDirectory, bucketStart, cacheDefinition.serializer));
             //noinspection unchecked
-            return list::add;
+            return bucket::add;
+        }
+
+        private Bucket<T> createBucket(
+            File cacheDirectory,
+            long bucketStart,
+            Serializer<T> serializer)
+        {
+            final File bucketFile = new File(cacheDirectory, Long.toString(bucketStart));
+            try
+            {
+                final RandomAccessFile raf = new RandomAccessFile(bucketFile, "rw");
+                return new Bucket<>(new MemoryMappedBuffer(raf), serializer);
+            }
+            catch (FileNotFoundException e)
+            {
+                throw new RuntimeException(e);
+            }
         }
 
         public <U, F> void iterate(
@@ -195,6 +228,45 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
                 Instant.ofEpochMilli(from),
                 Instant.ofEpochMilli(toExclusive),
                 newBucket(from));
+        }
+    }
+
+    private static class Bucket<T>
+    {
+        private final MemoryMappedBuffer memoryMappedBuffer;
+        private final Serializer<T> serializer;
+
+        public Bucket(
+            MemoryMappedBuffer memoryMappedBuffer,
+            Serializer<T> serializer)
+        {
+            this.memoryMappedBuffer = memoryMappedBuffer;
+            this.serializer = serializer;
+        }
+
+        public Stream<T> stream()
+        {
+            memoryMappedBuffer.prepareForRead();
+
+            return StreamSupport.stream(
+                Spliterators.spliteratorUnknownSize(new Iterator<T>() {
+                    @Override
+                    public boolean hasNext()
+                    {
+                        return memoryMappedBuffer.hasBytes();
+                    }
+
+                    @Override
+                    public T next()
+                    {
+                        return serializer.decode(memoryMappedBuffer);
+                    }
+                }, Spliterator.ORDERED), false);
+        }
+
+        public void add(T t)
+        {
+            serializer.encode(t, memoryMappedBuffer);
         }
     }
 }

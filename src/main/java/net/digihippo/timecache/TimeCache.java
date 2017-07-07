@@ -439,7 +439,8 @@ public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheActions
                             cacheComponents.cacheClass,
                             cacheComponents.eventLoader,
                             cacheComponents.millitimeExtractor,
-                            cacheComponents.bucketSize),
+                            cacheComponents.bucketSize,
+                            cacheComponents.serializer),
                         new HashSet<>(),
                         new HashMap<>()
                     ));

@@ -32,11 +32,12 @@ public class EndToEndAcceptanceTest
     private static final List<NamedEvent> ALL_EVENTS =
         createEvents(BEGINNING_OF_TIME);
 
-    private static List<NamedEvent> createEvents(ZonedDateTime beginningOfTime) {
+    private static List<NamedEvent> createEvents(ZonedDateTime beginningOfTime)
+    {
         final List<NamedEvent> events = new ArrayList<>();
         for (int i = 0; i < 1000; i++)
         {
-             events.add(NamedEvent.event(beginningOfTime.plusSeconds(i), Integer.toString(i)));
+            events.add(NamedEvent.event(beginningOfTime.plusSeconds(i), Integer.toString(i)));
         }
         return events;
     }
@@ -65,15 +66,16 @@ public class EndToEndAcceptanceTest
 
         for (int i = 0; i < AGENT_COUNT; i++)
         {
-             executorService.execute(() -> {
-                 try
-                 {
-                     NettyTimeCacheAgent.connectAndRunAgent("localhost", 9191);
-                 } catch (InterruptedException e)
-                 {
-                     e.printStackTrace();
-                 }
-             });
+            final int j = i;
+            executorService.execute(() -> {
+                try
+                {
+                    NettyTimeCacheAgent.connectAndRunAgent("agent-" + j, "localhost", 9191);
+                } catch (InterruptedException e)
+                {
+                    e.printStackTrace();
+                }
+            });
         }
 
         latch.await();
@@ -139,7 +141,8 @@ public class EndToEndAcceptanceTest
 
     private TimeCacheEvents noisyTimeCacheEvents(final CountDownLatch latch)
     {
-        return new TimeCacheEvents() {
+        return new TimeCacheEvents()
+        {
             @Override
             public void onAgentConnected()
             {

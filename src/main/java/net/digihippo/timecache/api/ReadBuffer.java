@@ -12,4 +12,5 @@ public interface ReadBuffer
     String readString();
 
     long size();
+    boolean hasBytes();
 }

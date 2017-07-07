@@ -3,8 +3,11 @@ package net.digihippo.timecache;
 import net.digihippo.timecache.api.CacheComponentsFactory;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
@@ -22,6 +25,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 
 public class ReloadAndPlaybackTest {
+    @Rule
+    public TemporaryFolder folder = new TemporaryFolder();
+
     private static final ZonedDateTime BEGINNING_OF_TIME =
             ZonedDateTime.of(2016, 11, 1, 0, 0, 0, 0, ZoneId.of("UTC"));
     private static final List<NamedEvent> ALL_EVENTS = createEvents(BEGINNING_OF_TIME);
@@ -43,10 +49,10 @@ public class ReloadAndPlaybackTest {
     }
 
     @Before
-    public void load()
+    public void load() throws IOException
     {
-        timeCache.addAgent("agentOne", new InMemoryTimeCacheAgent("agentOne", timeCache));
-        timeCache.addAgent("agentTwo", new InMemoryTimeCacheAgent("agentTwo", timeCache));
+        timeCache.addAgent("agentOne", new InMemoryTimeCacheAgent(folder.newFolder("one"), "agentOne", timeCache));
+        timeCache.addAgent("agentTwo", new InMemoryTimeCacheAgent(folder.newFolder("two"), "agentTwo", timeCache));
 
         timeCache.defineCache(
             "historicalEvents",

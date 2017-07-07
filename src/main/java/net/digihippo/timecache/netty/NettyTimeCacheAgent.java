@@ -9,6 +9,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import net.digihippo.timecache.InMemoryTimeCacheAgent;
 import net.digihippo.timecache.TimeCacheServer;
 
+import java.io.File;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
@@ -16,14 +17,22 @@ public class NettyTimeCacheAgent
 {
     public static void main(String[] args) throws InterruptedException
     {
-        connectAndRunAgent("localhost", 8000);
+        connectAndRunAgent(args[0], "localhost", 8000);
     }
 
     public static void connectAndRunAgent(
+        String agentName,
         String serverHost,
         int serverPort)
         throws InterruptedException
     {
+        final File file = new File(agentName);
+        final boolean mkdir = file.mkdir();
+        if (!mkdir)
+        {
+            throw new IllegalStateException("Unable to create agent data dir: " + file.getAbsolutePath());
+        }
+
         EventLoopGroup workerGroup = new NioEventLoopGroup(1);
         try {
             Bootstrap b = new Bootstrap();
@@ -34,7 +43,7 @@ public class NettyTimeCacheAgent
                 @Override
                 public void initChannel(SocketChannel ch) throws Exception {
                     ch.pipeline().addLast(
-                        new TimeCacheAgentHandler());
+                        new TimeCacheAgentHandler(file));
                 }
             });
 
@@ -51,8 +60,14 @@ public class NettyTimeCacheAgent
         extends ChannelInboundHandlerAdapter
         implements TimeCacheServer
     {
+        private final File rootDir;
         private AgentInvoker agentInvoker;
         private RemoteNettyServer remoteServer;
+
+        public TimeCacheAgentHandler(File rootDir)
+        {
+            this.rootDir = rootDir;
+        }
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception
@@ -64,7 +79,10 @@ public class NettyTimeCacheAgent
                     .getAddress()
                     .getHostAddress();
             int port = inetSocketAddress.getPort();
-            this.agentInvoker = new AgentInvoker(new InMemoryTimeCacheAgent(host + ":" + port, this));
+
+            this.agentInvoker =
+                new AgentInvoker(
+                    new InMemoryTimeCacheAgent(rootDir, host + ":" + port, this));
             this.remoteServer = new RemoteNettyServer(new NettyChannel(ctx));
         }
 

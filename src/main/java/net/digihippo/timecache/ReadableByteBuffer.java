@@ -74,4 +74,10 @@ public class ReadableByteBuffer implements ReadBuffer
     {
         return bb.limit();
     }
+
+    @Override
+    public boolean hasBytes()
+    {
+        return bb.position() < bb.limit();
+    }
 }
