@@ -17,21 +17,24 @@ public class NettyTimeCacheAgent
 {
     public static void main(String[] args) throws InterruptedException
     {
-        connectAndRunAgent(args[0], "localhost", 8000);
-    }
-
-    public static void connectAndRunAgent(
-        String agentName,
-        String serverHost,
-        int serverPort)
-        throws InterruptedException
-    {
+        String agentName = args[0];
         final File file = new File(agentName);
         final boolean mkdir = file.mkdir();
         if (!mkdir)
         {
             throw new IllegalStateException("Unable to create agent data dir: " + file.getAbsolutePath());
         }
+
+        connectAndRunAgent(file, "localhost", 8000);
+
+    }
+
+    public static void connectAndRunAgent(
+        File rootDirectory,
+        String serverHost,
+        int serverPort)
+        throws InterruptedException
+    {
 
         EventLoopGroup workerGroup = new NioEventLoopGroup(1);
         try {
@@ -43,7 +46,7 @@ public class NettyTimeCacheAgent
                 @Override
                 public void initChannel(SocketChannel ch) throws Exception {
                     ch.pipeline().addLast(
-                        new TimeCacheAgentHandler(file));
+                        new TimeCacheAgentHandler(rootDirectory));
                 }
             });
 
@@ -102,6 +105,12 @@ public class NettyTimeCacheAgent
         }
 
         @Override
+        public void loadFailure(String agentId, String cacheName, long currentBucketStart, String message)
+        {
+            remoteServer.loadFailure(agentId, cacheName, currentBucketStart, message);
+        }
+
+        @Override
         public void bucketComplete(String agentId, String cacheName, long iterationKey, long currentBucketKey, ByteBuffer result)
         {
             remoteServer.bucketComplete(agentId, cacheName, iterationKey, currentBucketKey, result);
@@ -123,6 +132,12 @@ public class NettyTimeCacheAgent
         public void cacheDefined(String agentId, String cacheName)
         {
             remoteServer.cacheDefined(agentId, cacheName);
+        }
+
+        @Override
+        public void cacheDefinitionFailed(String agentId, String cacheName, String errorMessage)
+        {
+            remoteServer.cacheDefinitionFailed(agentId, cacheName, errorMessage);
         }
     }
 }

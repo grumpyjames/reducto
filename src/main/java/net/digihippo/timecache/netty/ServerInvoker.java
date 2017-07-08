@@ -71,6 +71,23 @@ public class ServerInvoker
                 endpoint.cacheDefined(agentId, cacheName);
                 break;
             }
+            case 5:
+            {
+                String agentId = messageReader.readString();
+                String cacheName = messageReader.readString();
+                long bucketKey = messageReader.readLong();
+                String errorMessage = messageReader.readString();
+                endpoint.loadFailure(agentId, cacheName, bucketKey, errorMessage);
+                break;
+            }
+            case 6:
+            {
+                String agentId = messageReader.readString();
+                String cacheName = messageReader.readString();
+                String errorMessage = messageReader.readString();
+                endpoint.cacheDefinitionFailed(agentId, cacheName, errorMessage);
+                break;
+            }
             default:
                 throw new RuntimeException("Unknown method requested, index " + methodIndex);
         }

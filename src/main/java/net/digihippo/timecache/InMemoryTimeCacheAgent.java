@@ -55,17 +55,24 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
     {
         Cache cache = caches.get(cacheName);
         //noinspection unchecked
-        cache
-            .loadEvents(
-                currentBucketStart,
-                currentBucketEnd);
+        try
+        {
+            cache
+                .loadEvents(
+                    currentBucketStart,
+                    currentBucketEnd);
 
-        timeCacheServer
-            .loadComplete(
-                agentId,
-                cacheName,
-                currentBucketStart,
-                currentBucketEnd);
+            timeCacheServer
+                .loadComplete(
+                    agentId,
+                    cacheName,
+                    currentBucketStart,
+                    currentBucketEnd);
+        }
+        catch (Exception e)
+        {
+            timeCacheServer.loadFailure(agentId, cacheName, currentBucketStart, e.getMessage());
+        }
     }
 
     @Override
@@ -117,7 +124,11 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
                 final File cacheDirectory = new File(rootDir, cacheName);
                 if (!cacheDirectory.mkdir())
                 {
-                    throw new RuntimeException("Unable to create file: " + cacheDirectory.getAbsolutePath());
+                    timeCacheServer.cacheDefinitionFailed(
+                        agentId,
+                        cacheName,
+                        "Unable to create file: " + cacheDirectory.getAbsolutePath());
+                    return;
                 }
                 @SuppressWarnings("unchecked") final CacheDefinition definition =
                     new CacheDefinition(
@@ -131,9 +142,7 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
                 caches.put(cacheName, new Cache(definition, cacheDirectory, cacheComponents.bucketSize.toMillis(1L)));
                 timeCacheServer.cacheDefined(agentId, cacheName);
             },
-            exc -> {
-                throw new RuntimeException(exc);
-            }
+            exc -> timeCacheServer.cacheDefinitionFailed(agentId, cacheName, exc.getMessage())
         );
     }
 

@@ -56,7 +56,9 @@ public class ServerRoundTripTest
             },
             server -> server.installationComplete("foo", "bar"),
             server -> server.installationError("foo", "bar", "oops"),
-            server -> server.cacheDefined("banana", "pineapple")
+            server -> server.cacheDefined("banana", "pineapple"),
+            server -> server.cacheDefinitionFailed("one", "moose", "down"),
+            server -> server.loadFailure("nine", "men's", 82039423L, "oops")
         );
         ThoroughSerializationTesting.runTest(
             mockery,

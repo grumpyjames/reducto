@@ -123,4 +123,49 @@ public class RemoteNettyServer implements TimeCacheServer
 
         channel.write(alloc);
     }
+
+    @Override
+    public void loadFailure(String agentId, String cacheName, long currentBucketStart, String message)
+    {
+        byte[] agentIdBytes = utf8Bytes(agentId);
+        byte[] cacheNameBytes = utf8Bytes(cacheName);
+        byte[] messageBytes = utf8Bytes(message);
+
+        ByteBuf alloc = channel.alloc(
+            1 +
+                wireLen(agentIdBytes) +
+                wireLen(cacheNameBytes) +
+                8 +
+                wireLen(messageBytes));
+
+        alloc.writeByte(5);
+        writeBytes(alloc, agentIdBytes);
+        writeBytes(alloc, cacheNameBytes);
+        alloc.writeLong(currentBucketStart);
+        writeBytes(alloc, messageBytes);
+
+        channel.write(alloc);
+    }
+
+
+    @Override
+    public void cacheDefinitionFailed(String agentId, String cacheName, String errorMessage)
+    {
+        byte[] agentIdBytes = utf8Bytes(agentId);
+        byte[] cacheNameBytes = utf8Bytes(cacheName);
+        byte[] messageBytes = utf8Bytes(errorMessage);
+
+        ByteBuf alloc = channel.alloc(
+            1 +
+                wireLen(agentIdBytes) +
+                wireLen(cacheNameBytes) +
+                wireLen(messageBytes));
+
+        alloc.writeByte(6);
+        writeBytes(alloc, agentIdBytes);
+        writeBytes(alloc, cacheNameBytes);
+        writeBytes(alloc, messageBytes);
+
+        channel.write(alloc);
+    }
 }

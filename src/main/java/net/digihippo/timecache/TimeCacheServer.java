@@ -9,6 +9,12 @@ public interface TimeCacheServer {
         long bucketStart,
         long bucketEnd);
 
+    void loadFailure(
+        String agentId,
+        String cacheName,
+        long currentBucketStart,
+        String message);
+
     void bucketComplete(
         String agentId,
         String cacheName,
@@ -28,4 +34,9 @@ public interface TimeCacheServer {
     void cacheDefined(
         String agentId,
         String cacheName);
+
+    void cacheDefinitionFailed(
+        String agentId,
+        String cacheName,
+        String errorMessage);
 }

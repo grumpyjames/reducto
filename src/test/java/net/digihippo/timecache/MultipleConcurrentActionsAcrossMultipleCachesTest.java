@@ -284,6 +284,12 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
         }
 
         @Override
+        public void loadFailure(String agentId, String cacheName, long currentBucketStart, String message)
+        {
+            timeCache.loadFailure(agentId, cacheName, currentBucketStart, message);
+        }
+
+        @Override
         public void bucketComplete(
             String agentId,
             String cacheName,
@@ -311,6 +317,12 @@ public class MultipleConcurrentActionsAcrossMultipleCachesTest {
         public void cacheDefined(String agentId, String cacheName)
         {
             timeCache.cacheDefined(agentId, cacheName);
+        }
+
+        @Override
+        public void cacheDefinitionFailed(String agentId, String cacheName, String errorMessage)
+        {
+            timeCache.cacheDefinitionFailed(agentId, cacheName, errorMessage);
         }
 
         void block() {

@@ -113,6 +113,7 @@ public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheActions
         private long iterationKey;
         private LoadListener loadListener;
         private long bucketsLoading;
+        private final List<String> loadErrors = new ArrayList<>();
 
         private DistributedCacheStatus(
             CacheDefinition<T> definition,
@@ -129,9 +130,29 @@ public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheActions
             loadingKeys.remove(bucketStart);
             --bucketsLoading;
             bucketOwners.computeIfAbsent(bucketStart, (b) -> new HashSet<>()).add(agentId);
+            checkCompletion();
+        }
+
+        void loadFailure(String agentId, long bucketStart, String message)
+        {
+            loadingKeys.remove(bucketStart);
+            --bucketsLoading;
+            loadErrors.add("Agent " + agentId + " failed to load bucket " + bucketStart + " due to " + message);
+            checkCompletion();
+        }
+
+        private void checkCompletion()
+        {
             if (bucketsLoading == 0)
             {
-                loadListener.onComplete.run();
+                if (loadErrors.isEmpty())
+                {
+                    loadListener.onComplete.run();
+                }
+                else
+                {
+                    loadListener.onFatalError.accept("Encountered errors during load " + loadErrors);
+                }
             }
         }
 
@@ -331,6 +352,14 @@ public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheActions
     }
 
     @Override
+    public void loadFailure(String agentId, String cacheName, long bucketStart, String message)
+    {
+        caches
+            .get(cacheName)
+            .loadFailure(agentId, bucketStart, message);
+    }
+
+    @Override
     public void bucketComplete(
         String agentId,
         String cacheName,
@@ -366,6 +395,12 @@ public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheActions
     public void cacheDefined(String agentId, String cacheName)
     {
         definitionStatuses.get(cacheName).agentDefinitionComplete(agentId);
+    }
+
+    @Override
+    public void cacheDefinitionFailed(String agentId, String cacheName, String errorMessage)
+    {
+        definitionStatuses.get(cacheName).agentDefinitionFailed(agentId, errorMessage);
     }
 
     public void addAgent(String agentName, TimeCacheAgent timeCacheAgent)
@@ -412,6 +447,7 @@ public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheActions
         private final CacheComponentsFactory.CacheComponents<?> cacheComponents;
         private final DefinitionListener definitionListener;
         private final HashSet<String> waitingFor;
+        private final List<String> errors = new ArrayList<>();
 
         private DefinitionStatus(
             String cacheName,
@@ -428,23 +464,45 @@ public class TimeCache implements TimeCacheServer, Stoppable, TimeCacheActions
         void agentDefinitionComplete(String agentId)
         {
             waitingFor.remove(agentId);
+            checkCompletion();
+        }
+
+        public void agentDefinitionFailed(String agentId, String errorMessage)
+        {
+            waitingFor.remove(agentId);
+            errors.add(
+                "Agent " + agentId + " failed to load cache definition for cache " + cacheName + " due to " +
+                    errorMessage);
+            checkCompletion();
+        }
+
+        private void checkCompletion()
+        {
             if (waitingFor.isEmpty())
             {
-                //noinspection unchecked
-                caches.put(
-                    cacheName,
-                    new DistributedCacheStatus(
-                        new CacheDefinition(
-                            cacheName,
-                            cacheComponents.cacheClass,
-                            cacheComponents.eventLoader,
-                            cacheComponents.millitimeExtractor,
-                            cacheComponents.bucketSize,
-                            cacheComponents.serializer),
-                        new HashSet<>(),
-                        new HashMap<>()
-                    ));
-                definitionListener.onSuccess.run();
+                if (errors.isEmpty())
+                {
+
+                    //noinspection unchecked
+                    caches.put(
+                        cacheName,
+                        new DistributedCacheStatus(
+                            new CacheDefinition(
+                                cacheName,
+                                cacheComponents.cacheClass,
+                                cacheComponents.eventLoader,
+                                cacheComponents.millitimeExtractor,
+                                cacheComponents.bucketSize,
+                                cacheComponents.serializer),
+                            new HashSet<>(),
+                            new HashMap<>()
+                        ));
+                    definitionListener.onSuccess.run();
+                }
+                else
+                {
+                    definitionListener.onError.accept("Failed to define cache due to " + errors);
+                }
             }
         }
     }

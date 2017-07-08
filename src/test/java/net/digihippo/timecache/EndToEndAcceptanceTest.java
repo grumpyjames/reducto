@@ -4,8 +4,11 @@ import net.digihippo.timecache.api.CacheComponentsFactory;
 import net.digihippo.timecache.netty.NettyTimeCacheAgent;
 import net.digihippo.timecache.netty.NettyTimeCacheClient;
 import net.digihippo.timecache.netty.NettyTimeCacheServer;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
@@ -24,6 +27,9 @@ import static org.junit.Assert.assertThat;
 
 public class EndToEndAcceptanceTest
 {
+    @Rule
+    public final TemporaryFolder folder = new TemporaryFolder();
+
     private static final int AGENT_COUNT = 10;
     private final ExecutorService executorService = Executors.newCachedThreadPool();
 
@@ -70,8 +76,9 @@ public class EndToEndAcceptanceTest
             executorService.execute(() -> {
                 try
                 {
-                    NettyTimeCacheAgent.connectAndRunAgent("agent-" + j, "localhost", 9191);
-                } catch (InterruptedException e)
+                    NettyTimeCacheAgent.connectAndRunAgent(
+                        folder.newFolder("agent-" + j), "localhost", 9191);
+                } catch (InterruptedException | IOException e)
                 {
                     e.printStackTrace();
                 }
