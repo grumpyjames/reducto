@@ -151,7 +151,7 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
         private final CacheDefinition<T> cacheDefinition;
         private final File cacheDirectory;
         private final long bucketSize;
-        private final Map<Long, Bucket<T>> buckets = new HashMap<>();
+        private final SortedMap<Long, Bucket<T>> buckets = new TreeMap<>();
 
         Cache(
             CacheDefinition<T> cacheDefinition,
@@ -199,33 +199,27 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
             Predicate<T> predicate,
             TimeCacheServer server)
         {
-            long fromEpochMilli = from.toInstant().toEpochMilli();
-            long toEpochMilli = toExclusive.toInstant().toEpochMilli();
-            long bucketKey = (fromEpochMilli / bucketSize) * bucketSize;
-            while (bucketKey < toEpochMilli)
+            final long fromEpochMilli = from.toInstant().toEpochMilli();
+            final long toEpochMilli = toExclusive.toInstant().toEpochMilli();
+            final long startKey = (fromEpochMilli / bucketSize) * bucketSize;
+            final long endKey = Bucketing.upToMultiple(bucketSize, toEpochMilli);
+
+            for (Map.Entry<Long, Bucket<T>> bucket : buckets.tailMap(startKey).headMap(endKey).entrySet())
             {
-                final long currentBucketKey = bucketKey;
-                Optional
-                    .ofNullable(buckets.get(bucketKey))
-                    .ifPresent(
-                        items -> {
-                            U result = definition.initialSupplier.get();
-                            items
-                                .stream()
-                                .filter(e -> {
-                                    long eTime = cacheDefinition.millitimeExtractor.apply(e);
-                                    return fromEpochMilli <= eTime && eTime < toEpochMilli && predicate.test(e);
-                                })
-                                .forEach(
-                                    item -> definition.reduceOne.accept(result, item));
+                final U result = definition.initialSupplier.get();
+                bucket.getValue()
+                    .stream()
+                    .filter(e -> {
+                        long eTime = cacheDefinition.millitimeExtractor.apply(e);
+                        return fromEpochMilli <= eTime && eTime < toEpochMilli && predicate.test(e);
+                    })
+                    .forEach(item -> definition.reduceOne.accept(result, item));
 
-                            final EmbiggenableBuffer buffer = EmbiggenableBuffer.allocate(128);
-                            definition.serializer.encode(result, buffer);
-                            ByteBuffer buf = buffer.asReadableByteBuffer();
+                final EmbiggenableBuffer buffer = EmbiggenableBuffer.allocate(128);
+                definition.serializer.encode(result, buffer);
+                final ByteBuffer buf = buffer.asReadableByteBuffer();
 
-                            server.bucketComplete(agentId, cacheName, iterationKey, currentBucketKey, buf);
-                        });
-                bucketKey += bucketSize;
+                server.bucketComplete(agentId, cacheName, iterationKey, bucket.getKey(), buf);
             }
         }
 

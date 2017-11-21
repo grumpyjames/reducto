@@ -7,6 +7,8 @@ import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
 import java.util.*;
 
+import static net.digihippo.timecache.Bucketing.calculateBuckets;
+
 final class DistributedCacheStatus<T>
 {
     private final CacheDefinition<T> definition;
@@ -80,7 +82,7 @@ final class DistributedCacheStatus<T>
         TimeCacheAgent[] agents)
     {
         long bucketSizeMillis = definition.bucketSize.toMillis(1L);
-        Buckets buckets = calculateBuckets(fromInclusive, toExclusive, bucketSizeMillis);
+        Bucketing.Buckets buckets = calculateBuckets(fromInclusive, toExclusive, bucketSizeMillis);
 
         long currentBucketStart = buckets.firstBucketKey;
         long currentBucketEnd = currentBucketStart + bucketSizeMillis;
@@ -108,7 +110,7 @@ final class DistributedCacheStatus<T>
         ReductionDefinition reductionDefinition,
         Collection<TimeCacheAgent> agents)
     {
-        Buckets buckets = calculateBuckets(fromInclusive, toExclusive, definition.bucketSize.toMillis(1L));
+        Bucketing.Buckets buckets = calculateBuckets(fromInclusive, toExclusive, definition.bucketSize.toMillis(1L));
 
         long newIterationKey = iterationKey;
         //noinspection unchecked
@@ -142,35 +144,5 @@ final class DistributedCacheStatus<T>
             }
         }
         iterationKey++;
-    }
-
-    static Buckets calculateBuckets(
-        ZonedDateTime fromInclusive,
-        ZonedDateTime toExclusive,
-        long bucketSizeMillis)
-    {
-        final long fromMillis = fromInclusive.toInstant().toEpochMilli();
-        final long toMillis = toExclusive.toInstant().toEpochMilli();
-        final long firstBucketKey = (fromMillis / bucketSizeMillis) * bucketSizeMillis;
-        final long remainder = (toMillis - firstBucketKey) % bucketSizeMillis;
-        long requiredBucketCount = (toMillis - firstBucketKey) / bucketSizeMillis;
-        if (remainder != 0)
-        {
-            requiredBucketCount = 1 + ((toMillis - firstBucketKey) / bucketSizeMillis);
-        }
-
-        return new Buckets(firstBucketKey, requiredBucketCount);
-    }
-
-    private static class Buckets
-    {
-        final long firstBucketKey;
-        final long bucketCount;
-
-        Buckets(long firstBucketKey, long bucketCount)
-        {
-            this.firstBucketKey = firstBucketKey;
-            this.bucketCount = bucketCount;
-        }
     }
 }
