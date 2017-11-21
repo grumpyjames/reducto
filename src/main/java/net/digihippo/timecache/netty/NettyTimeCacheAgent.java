@@ -7,11 +7,9 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import net.digihippo.timecache.InMemoryTimeCacheAgent;
-import net.digihippo.timecache.TimeCacheServer;
 
 import java.io.File;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 
 public class NettyTimeCacheAgent
 {
@@ -61,7 +59,6 @@ public class NettyTimeCacheAgent
 
     private static class TimeCacheAgentHandler
         extends ChannelInboundHandlerAdapter
-        implements TimeCacheServer
     {
         private final File rootDir;
         private AgentInvoker agentInvoker;
@@ -83,10 +80,10 @@ public class NettyTimeCacheAgent
                     .getHostAddress();
             int port = inetSocketAddress.getPort();
 
+            this.remoteServer = new RemoteNettyServer(new NettyChannel(ctx));
             this.agentInvoker =
                 new AgentInvoker(
-                    new InMemoryTimeCacheAgent(rootDir, host + ":" + port, this));
-            this.remoteServer = new RemoteNettyServer(new NettyChannel(ctx));
+                    new InMemoryTimeCacheAgent(rootDir, host + ":" + port, remoteServer));
         }
 
         @Override
@@ -96,48 +93,6 @@ public class NettyTimeCacheAgent
             agentInvoker.dispatch(message);
 
             super.channelRead(ctx, msg);
-        }
-
-        @Override
-        public void loadComplete(String agentId, String cacheName, long bucketStart, long bucketEnd)
-        {
-            remoteServer.loadComplete(agentId, cacheName, bucketStart, bucketEnd);
-        }
-
-        @Override
-        public void loadFailure(String agentId, String cacheName, long currentBucketStart, String message)
-        {
-            remoteServer.loadFailure(agentId, cacheName, currentBucketStart, message);
-        }
-
-        @Override
-        public void bucketComplete(String agentId, String cacheName, long iterationKey, long currentBucketKey, ByteBuffer result)
-        {
-            remoteServer.bucketComplete(agentId, cacheName, iterationKey, currentBucketKey, result);
-        }
-
-        @Override
-        public void installationComplete(String agentName, String installationKlass)
-        {
-            remoteServer.installationComplete(agentName, installationKlass);
-        }
-
-        @Override
-        public void installationError(String agentName, String installationKlass, String errorMessage)
-        {
-            remoteServer.installationError(agentName, installationKlass, errorMessage);
-        }
-
-        @Override
-        public void cacheDefined(String agentId, String cacheName)
-        {
-            remoteServer.cacheDefined(agentId, cacheName);
-        }
-
-        @Override
-        public void cacheDefinitionFailed(String agentId, String cacheName, String errorMessage)
-        {
-            remoteServer.cacheDefinitionFailed(agentId, cacheName, errorMessage);
         }
     }
 }
