@@ -204,7 +204,7 @@ public class InMemoryTimeCacheAgent implements TimeCacheAgent
             final long startKey = (fromEpochMilli / bucketSize) * bucketSize;
             final long endKey = Bucketing.upToMultiple(bucketSize, toEpochMilli);
 
-            for (Map.Entry<Long, Bucket<T>> bucket : buckets.tailMap(startKey).headMap(endKey).entrySet())
+            for (Map.Entry<Long, Bucket<T>> bucket : buckets.subMap(startKey, endKey).entrySet())
             {
                 final U result = definition.initialSupplier.get();
                 bucket.getValue()
