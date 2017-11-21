@@ -79,19 +79,13 @@ final class DistributedCacheStatus<T>
         LoadListener loadListener,
         TimeCacheAgent[] agents)
     {
-        final long fromMillis = fromInclusive.toInstant().toEpochMilli();
-        final long toMillis = toExclusive.toInstant().toEpochMilli();
-        final long bucketSizeMillis = definition.bucketSize.toMillis(1L);
+        long bucketSizeMillis = definition.bucketSize.toMillis(1L);
+        Buckets buckets = calculateBuckets(fromInclusive, toExclusive, bucketSizeMillis);
 
-        final long firstBucketKey = (fromMillis / bucketSizeMillis) * bucketSizeMillis;
-        final long maybeLastBucketKey = (toMillis / bucketSizeMillis * bucketSizeMillis);
-        final long lastBucketKey = maybeLastBucketKey == toMillis ? toMillis - bucketSizeMillis : maybeLastBucketKey;
-        final long bucketCount = 1 + (lastBucketKey - firstBucketKey) / bucketSizeMillis;
-
-        long currentBucketStart = firstBucketKey;
+        long currentBucketStart = buckets.firstBucketKey;
         long currentBucketEnd = currentBucketStart + bucketSizeMillis;
-        loadingStarted(bucketCount, loadListener);
-        for (int i = 0; i < bucketCount; i++)
+        loadingStarted(buckets.bucketCount, loadListener);
+        for (int i = 0; i < buckets.bucketCount; i++)
         {
             loadingKeys.add(currentBucketStart);
             agents[i % agents.length]
@@ -105,7 +99,7 @@ final class DistributedCacheStatus<T>
     }
 
     void iterate(
-        ZonedDateTime from,
+        ZonedDateTime fromInclusive,
         ZonedDateTime toExclusive,
         String definingClass,
         String iterateeName,
@@ -114,13 +108,7 @@ final class DistributedCacheStatus<T>
         ReductionDefinition reductionDefinition,
         Collection<TimeCacheAgent> agents)
     {
-        final long fromMillis = from.toInstant().toEpochMilli();
-        final long toMillis = toExclusive.toInstant().toEpochMilli();
-        final long bucketMillis = definition.bucketSize.toMillis(1L);
-        final long firstBucketKey = (fromMillis / bucketMillis) * bucketMillis;
-        final long lastBucketKey = (toMillis / bucketMillis) * bucketMillis;
-        final long requiredBucketCount =
-            (lastBucketKey - firstBucketKey) / bucketMillis + (firstBucketKey == lastBucketKey ? 1 : 0);
+        Buckets buckets = calculateBuckets(fromInclusive, toExclusive, definition.bucketSize.toMillis(1L));
 
         long newIterationKey = iterationKey;
         //noinspection unchecked
@@ -128,7 +116,7 @@ final class DistributedCacheStatus<T>
             newIterationKey,
             new IterationStatus<>(
                 newIterationKey,
-                requiredBucketCount,
+                buckets.bucketCount,
                 reductionDefinition.initialSupplier.get(),
                 reductionDefinition,
                 iterationListener
@@ -142,7 +130,7 @@ final class DistributedCacheStatus<T>
                 agent.iterate(
                     definition.cacheName,
                     newIterationKey,
-                    from,
+                    fromInclusive,
                     toExclusive,
                     definingClass,
                     iterateeName,
@@ -154,5 +142,35 @@ final class DistributedCacheStatus<T>
             }
         }
         iterationKey++;
+    }
+
+    static Buckets calculateBuckets(
+        ZonedDateTime fromInclusive,
+        ZonedDateTime toExclusive,
+        long bucketSizeMillis)
+    {
+        final long fromMillis = fromInclusive.toInstant().toEpochMilli();
+        final long toMillis = toExclusive.toInstant().toEpochMilli();
+        final long firstBucketKey = (fromMillis / bucketSizeMillis) * bucketSizeMillis;
+        final long remainder = (toMillis - firstBucketKey) % bucketSizeMillis;
+        long requiredBucketCount = (toMillis - firstBucketKey) / bucketSizeMillis;
+        if (remainder != 0)
+        {
+            requiredBucketCount = 1 + ((toMillis - firstBucketKey) / bucketSizeMillis);
+        }
+
+        return new Buckets(firstBucketKey, requiredBucketCount);
+    }
+
+    private static class Buckets
+    {
+        final long firstBucketKey;
+        final long bucketCount;
+
+        Buckets(long firstBucketKey, long bucketCount)
+        {
+            this.firstBucketKey = firstBucketKey;
+            this.bucketCount = bucketCount;
+        }
     }
 }
