@@ -1,6 +1,5 @@
 package net.digihippo.timecache;
 
-import java.util.Map;
 import java.util.function.Consumer;
 
 public final class InstallationListener
